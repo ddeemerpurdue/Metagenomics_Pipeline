@@ -1,0 +1,3 @@
+assembly	/path/to/my/file
+abundance	this/is/abundance
+output	outputdir
