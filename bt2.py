@@ -35,24 +35,28 @@ def run_bt2(fq_dir, index, save_directory):
     # Run alignment
     for f, r in zip(forward, reverse):
         # Go through alignment process for each read-pair.
-        samfile = ''.join([f_base.split('.')[0], '_BT2_Def.sam'])
-        align = subprocess.Pope((
-            'bowtie2', '-x', index,
-            '-1', f, '-2', r, '-S', samfile)
-        )
         f_base = os.path.basename(f)
+        # Write to SAM file
+        samfile = ''.join([f_base.split('.')[0], '_BT2_Def.sam'])
+        s = open(samfile, "w")
+        subprocess.check_call((
+            'bowtie2', '-x', index,
+            '-1', f, '-2', r),
+            stdout=s
+        )
+        # INSERT CODE HERE FOR FILTERING CONDITIONAL
         bamfile = ''.join([f_base.split('.')[0], '_BT2_Def.bam'])
         # Save alignment to bamfile
-        subprocess.run([
-            'samtools', 'view', '-b', samfile, '-o', bamfile],
+        b = open(bamfile, "w")
+        subprocess.check_call([
+            'samtools', 'view', '-S', '-b', samfile],
+            stdout=b
         )
-        align.wait()
         # Proceed to sort & index the BAM file
         bamfile_sorted = ''.join([bamfile.split('.')[0], '_Sorted.bam'])
         subprocess.check_call(
-            ['samtools', 'sort', '-o',
-             bamfile_sorted,
-             bamfile]
+            ['samtools', 'sort', bamfile,
+             '-o', bamfile_sorted]
         )
         subprocess.check_call(
             ['samtools', 'index',
