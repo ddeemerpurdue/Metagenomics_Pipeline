@@ -25,9 +25,9 @@ def run_bt2(fq_dir, index, save_directory):
     forward, reverse = [], []
     for file in os.listdir(fq_dir):
         if (file.endswith('.fastq') or file.endswith('.fq')):
-            if 'R1' in file:
+            if '_R1_' in file:
                 forward.append(os.path.join(fq_dir, file))
-            elif 'R2' in file:
+            elif '_R2_' in file:
                 reverse.append(os.path.join(fq_dir, file))
             else:
                 print('Something goofy is going on...')
