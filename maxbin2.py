@@ -16,7 +16,8 @@ parser.add_argument("-r", "--Refinem", help="Tell the program to proceed with \
                     refining the bins using RefineM after completion",
                     required=False, action='store_true')
 parser.add_argument("-b", "--Bams", help="This argument is required \
-                        if the --Refinem flag is given!", required=False)
+                        if the --Refinem flag is given!", required=False,
+                   nargs='*')
 parser.add_argument("-d", "--Basedir", help="Base directory to save \
                     refinement files to", required=False)
 parser.add_argument("-db", "--Reference", help="Path to the directory \
@@ -35,7 +36,7 @@ def read_sample_file(file):
         assert line[1].lower() == 'abundance', 'Make sure second column \
                                                 is abundance!'
         assert line[2].lower() == 'output', 'Make sure third column is output'
-        line = f.readline.split('\t')
+        line = f.readline().split('\t')
         assembly = line[0].strip()
         abundance = line[1].strip()
         output = line[2].strip()
