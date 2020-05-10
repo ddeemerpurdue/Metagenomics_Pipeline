@@ -16,8 +16,8 @@ parser.add_argument("-r", "--Refinem", help="Tell the program to proceed with \
                     refining the bins using RefineM after completion",
                     required=False, action='store_true')
 parser.add_argument("-b", "--Bams", help="This argument is required \
-                        if the --Refinem flag is given!", required=False,
-                   nargs='*')
+                    if the --Refinem flag is given!", required=False,
+                    nargs='*')
 parser.add_argument("-d", "--Basedir", help="Base directory to save \
                     refinement files to", required=False)
 parser.add_argument("-db", "--Reference", help="Path to the directory \
@@ -47,8 +47,8 @@ if __name__ == "__main__":
     os.system('module load bioinfo')
     os.system('module load MaxBin/2.2.3')
     assembly, abundance, output = read_sample_file(argument.File)
-    # subprocess.check_call(['run_MaxBin.pl', '-contig', assembly, '-abund',
-    #                        abundance, '-out', output])
+    subprocess.check_call(['run_MaxBin.pl', '-contig', assembly, '-abund',
+                           abundance, '-out', output])
     if argument.Refinem and (argument.Bams is None
                              or argument.Basedir is None
                              or argument.Reference is None):
