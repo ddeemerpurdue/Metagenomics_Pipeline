@@ -42,7 +42,7 @@ def read_refinem_info_file(file):
 
 
 # Runthrough RefineM
-def run_refinem(assembly, bins, bams, basedir, reference):
+def run_refinem(assembly, bins, [bams], basedir, reference):
     # Remove based on genomic properties
     subprocess.check_call(['refinem', 'scaffold_stats', '-c', '20',
                            '-x', 'fasta', assembly, bins,
