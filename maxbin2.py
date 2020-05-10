@@ -61,6 +61,10 @@ if __name__ == "__main__":
             pass
         else:
             os.mkdir(argument.Basedir)
+        try:
+            bins = output.split('/')[-2]
+        except IndexError:
+            bins = os.getcwd()
         run_refinem(assembly, output, argument.Bams, argument.Basedir,
                     argument.Reference)
     else:
