@@ -61,7 +61,7 @@ def run_refinem(assembly, bins, bams, basedir, reference):
     # Remove based on taxnomonic properties
     gene_output = os.path.join(basedir, 'gene_output')
     subprocess.check_call(['refinem', 'call_genes', '-c', '40', '-x',
-                           'fasta', 'genomic_filtered_output', gene_output])
+                           'fasta', genomic_filtered_output, gene_output])
     diam = os.path.join(reference,
                         'gtdb_r89_protein_db.2010-09-27.faa.dmnd')
     tax = os.path.join(reference, 'gtdb_r89_taxonomy.2019-09-27.tsv')
