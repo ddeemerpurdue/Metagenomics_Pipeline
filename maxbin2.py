@@ -47,14 +47,17 @@ if __name__ == "__main__":
     os.system('module load bioinfo')
     os.system('module load MaxBin/2.2.3')
     assembly, abundance, output = read_sample_file(argument.File)
-    subprocess.check_call(['run_MaxBin.pl', '-contig', assembly, '-abund',
-                           abundance, '-out', output])
+    # subprocess.check_call(['run_MaxBin.pl', '-contig', assembly, '-abund',
+    #                        abundance, '-out', output])
     if argument.Refinem and (argument.Bams is None
                              or argument.Basedir is None
                              or argument.Reference is None):
         parser.error('When --Refinem is used, --Bams, --Basedir and \
                       --Reference are all required as well.')
-    else:
+    elif argument.Refinem and (argument.Bams and argument.Basedir
+                               and argument.Reference):
         from refinem import run_refinem
         run_refinem(assembly, output, argument.Bams, argument.Basedir,
                     argument.Reference)
+    else:
+        pass
