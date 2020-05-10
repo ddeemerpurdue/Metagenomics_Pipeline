@@ -47,8 +47,8 @@ if __name__ == "__main__":
     os.system('module load bioinfo')
     os.system('module load MaxBin/2.2.3')
     assembly, abundance, output = read_sample_file(argument.File)
-    subprocess.check_call(['run_MaxBin.pl', '-contig', assembly, '-abund_list',
-                           abundance, '-out', output])
+    #subprocess.check_call(['run_MaxBin.pl', '-contig', assembly, '-abund_list',
+    #                       abundance, '-out', output])
     if argument.Refinem and (argument.Bams is None
                              or argument.Basedir is None
                              or argument.Reference is None):
@@ -62,7 +62,8 @@ if __name__ == "__main__":
         else:
             os.mkdir(argument.Basedir)
         try:
-            bins = output.split('/')[-2]
+            b = output.split('/')[0:-1]
+            bins = '/'.join(b)
         except IndexError:
             bins = os.getcwd()
         ref = argument.Reference
