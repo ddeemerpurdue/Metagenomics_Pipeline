@@ -35,7 +35,7 @@ def read_sample_file(file):
                                                assembly!'
         assert line[1].lower() == 'abundance', 'Make sure second column \
                                                 is abundance!'
-        assert line[2].lower() == 'output', 'Make sure third column is output'
+        #assert line[2].lower() == 'output', 'Make sure third column is output'
         line = f.readline().split('\t')
         assembly = line[0].strip()
         abundance = line[1].strip()
@@ -57,6 +57,10 @@ if __name__ == "__main__":
     elif argument.Refinem and (argument.Bams and argument.Basedir
                                and argument.Reference):
         from refinem import run_refinem
+        if os.path.exists(argument.Basedir):
+            pass
+        else:
+            os.mkdir(argument.Basedir)
         run_refinem(assembly, output, argument.Bams, argument.Basedir,
                     argument.Reference)
     else:

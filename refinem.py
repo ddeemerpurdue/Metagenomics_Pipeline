@@ -76,6 +76,9 @@ if __name__ == "__main__":
     (assembly, bins, bamfiles,
         basedir, reference) = read_refinem_info_file(sys.argv[1])
     # Make the base directory below
-    Path(basedir).mkdir(parents=True, exist_ok=True)
+    if os.path.exists(basedir):
+        pass
+    else:
+        os.mkdir(basedir)
     os.chdir(basedir)
     run_refinem(assembly, bins, bamfiles, basedir, reference)
