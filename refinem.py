@@ -44,9 +44,11 @@ def read_refinem_info_file(file):
 # Runthrough RefineM
 def run_refinem(assembly, bins, bams, basedir, reference):
     # Remove based on genomic properties
-    subprocess.check_call(['refinem', 'scaffold_stats', '-c', '20',
-                           '-x', 'fasta', assembly, bins,
-                           'stats_output_dir', bams])
+    rf = []
+    rf.extend('refinem', 'scaffold_stats', '-c', '20',
+              '-x', 'fasta', assembly, bins, 'stats_output_dir')
+    rf.append(bams)
+    subprocess.check_call(rf)
     sc_stats = os.path.join(basedir, 'stats_output_dir', 'scaffold_stats.tsv')
     subprocess.check_call(['refinem', 'outliers', '--no_plots', sc_stats,
                            'outlier_output'])
