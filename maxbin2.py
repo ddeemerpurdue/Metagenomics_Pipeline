@@ -66,7 +66,6 @@ if __name__ == "__main__":
         except IndexError:
             bins = os.getcwd()
         ref = argument.Reference
-        print(ref)
-        run_refinem(assembly, output, argument.Bams, argument.Basedir, ref)
+        run_refinem(assembly, bins, argument.Bams, argument.Basedir, ref)
     else:
         pass

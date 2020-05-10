@@ -66,7 +66,7 @@ def run_refinem(assembly, bins, bams, basedir, reference):
                            'taxon_profile_output_dir'])
     t_filter = os.path.join(basedir, 'taxon_filter.tsv')
     subprocess.check_call(['refinem', 'taxon_filter', '-c', '40',
-                           'taxon_profile_outpir_dir', t_filter])
+                           'taxon_profile_output_dir', t_filter])
     subprocess.check_call(['refinem', 'filter_bins', '-x', 'fasta',
                            'genomic_filtered_output', t_filter,
                            'taxon_filtered_output_dir'])
