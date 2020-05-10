@@ -1,5 +1,3 @@
-from maxbin2 import read_sample_file
-from pathlib import Path
 import os
 import sys
 import subprocess
