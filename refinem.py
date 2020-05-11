@@ -44,29 +44,29 @@ def read_refinem_info_file(file):
 # Runthrough RefineM
 def run_refinem(assembly, bins, bams, basedir, reference):
     # Remove based on genomic properties
-    #stats_output_dir = os.path.join(basedir, 'stats_output_dir')
-    #rf = []
-    #rf.extend(['refinem', 'scaffold_stats', '-c', '20',
-    #           '-x', 'fasta', assembly, bins, stats_output_dir])
-    #rf = rf + bams
-    #subprocess.check_call(rf)
+    stats_output_dir = os.path.join(basedir, 'stats_output_dir')
+    rf = []
+    rf.extend(['refinem', 'scaffold_stats', '-c', '20',
+               '-x', 'fasta', assembly, bins, stats_output_dir])
+    rf = rf + bams
+    subprocess.check_call(rf)
     sc_stats = os.path.join(stats_output_dir, 'scaffold_stats.tsv')
     outlier_output = os.path.join(basedir, 'outlier_output')
-    #subprocess.check_call(['refinem', 'outliers', '--no_plots', sc_stats,
-    #                       outlier_output])
+    subprocess.check_call(['refinem', 'outliers', '--no_plots', sc_stats,
+                           outlier_output])
     outliers = os.path.join(basedir, 'outlier_output', 'outliers.tsv')
     genomic_filtered_output = os.path.join(basedir, 'genomic_filtered_output')
-    #subprocess.check_call(['refinem', 'filter_bins', '-x', 'fasta',
-    #                       bins, outliers, genomic_filtered_output])
+    subprocess.check_call(['refinem', 'filter_bins', '-x', 'fasta',
+                           bins, outliers, genomic_filtered_output])
     # Remove based on taxnomonic properties
     gene_output = os.path.join(basedir, 'gene_output')
-    #subprocess.check_call(['refinem', 'call_genes', '-c', '40', '-x',
-    #                       'fasta', genomic_filtered_output, gene_output])
+    subprocess.check_call(['refinem', 'call_genes', '-c', '40', '-x',
+                           'fasta', genomic_filtered_output, gene_output])
     diam = os.path.join(reference,
-                        'gtdb_r89_protein_db.2010-09-27.faa.dmnd')
+                        'gtdb_r89_protein_db.2019-09-27.faa.dmnd')
     tax = os.path.join(reference, 'gtdb_r89_taxonomy.2019-09-27.tsv')
-    #taxon_profile_output_dir = os.path.join(basedir,
-    #                                        'taxon_profile_output_dir')
+    taxon_profile_output_dir = os.path.join(basedir,
+                                            'taxon_profile_output_dir')
     subprocess.check_call(['refinem', 'taxon_profile', '-c', '40', '-x',
                            'fna', gene_output, sc_stats, diam, tax,
                            taxon_profile_output_dir])
