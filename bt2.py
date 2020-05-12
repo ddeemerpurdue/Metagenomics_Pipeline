@@ -1,7 +1,15 @@
+'''
+Example usage:
+$ python bt2.py -fq <fastq_directory> -i <index_location> -o <output>
+$ python bt2.py -fq /path/to/fastq -i W1.index.fa
+'''
+
+
 from pathlib import Path
 import os
 import subprocess
 import argparse
+
 
 ''' Arguments '''
 parser = argparse.ArgumentParser(description="Parser")
@@ -40,7 +48,7 @@ def run_bt2(fq_dir, index, save_directory):
         samfile = ''.join([f_base.split('.')[0], '_BT2_Def.sam'])
         s = open(samfile, "w")
         subprocess.check_call((
-            'bowtie2', '-x', index,
+            'bowtie2', '--threads', '20', '-x', index,
             '-1', f, '-2', r),
             stdout=s
         )
