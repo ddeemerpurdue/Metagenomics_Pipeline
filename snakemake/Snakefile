@@ -1,0 +1,118 @@
+configfile: "config.yaml"
+
+
+rule index_assembly:
+    input:
+        config["assembly"]
+    params:
+        prefix=config["index"]
+    output:
+        directory(config["index"].split('/')[0]) 
+    shell:
+        """
+        mkdir {output}
+        chmod +rw {output}
+        bowtie2-build {input} {params.prefix}
+        """
+
+rule bowtie2_alignment:
+    input:
+        samples=lambda wildcards: expand(f"{config['readpath']}{wildcards.sample}_{{num}}_filtered.fastq.gz", num=['R1','R2']),
+        i=directory(config["index"].split('/')[0])
+    params:
+        index=directory(config["index"])
+    output:
+        "Bam/{sample}.bam"
+    shell:
+        "bowtie2 --threads 20 -x {params.index} -1 {input.samples[0]} -2 {input.samples[1]} | samtools view -b -o {output}"
+
+rule bam_sorting:
+    input:
+        "Bam/{sample}.bam"
+    output:
+        "Bam/{sample}.sorted.bam"
+    params:
+        prefix="pref.{sample}"
+    shell:
+        "samtools sort -@20 -T bam/{params.prefix} -o {output} {input}"
+
+rule bam_indexing:
+    input:
+        "Bam/{sample}.sorted.bam"
+    output:
+        "Bam/{sample}.sorted.bam.bai"
+    shell:
+        "samtools index {input} -o {output}"
+
+rule bbmap_stats:
+    input:
+        "Bam/{sample}.sorted.bam"
+    output:
+        "Abundances/{sample}.coverage.txt"
+    shell:
+        "pileup.sh in={input} out={output}"
+
+rule get_cov_file:
+    input:
+        "Abundances/{sample}.coverage.txt"
+    output:
+        "Abundances/{sample}.abundance.txt"
+    shell:
+        "cut -f 1,5 {input} | grep -v '^#' > {output}"
+
+rule get_abund_list:
+    input:
+        expand(f"Abundances/{{files}}.abundance.txt", files=config['maxbin_abunds']),
+#        abund_dir=directory("Abundances")
+    output:
+        "Abundances/abundance_list.txt"
+    script:
+        "scripts/make_abund_list.py"
+
+rule run_maxbin:
+    input:
+        abund="Abundances/abundance_list.txt",
+        scaff=config["assembly"]
+    output:
+        directory("Maxbin/All/MBALL")
+    log:
+        log1="logs/MB_All.log"
+    shell:
+        "run_MaxBin.pl -contig {input.scaff} -out {output} -abund_list {input.abund}"
+
+rule run_checkm:
+    input:
+        directory("Maxbin/All/MBALL")
+    output:
+        directory("CheckM/All")
+    shell:
+        "checkm lineage_wf -t 8 -x fasta {input} {output}"
+
+rule run_refinem:
+    input:
+        checkm="CheckM/All",
+        abunds=expand(f"Abundances/{{files}}.abundance.txt", files=config['maxbin_abunds']),
+        mb=directory("Maxbin/All/MBALL"),
+    params:
+        assembly=config["assembly"],
+        bins=directory("Maxbin/All"),
+        bams=expand(f"Bam/{{ref_bams}}.sorted.bam", ref_bams=config['refinem_bams']),
+        rm_basedir=config["rm_basedir"],
+        reference=config["reference"]
+    output:
+        directory("RefineM")
+    shell:
+        "python Scripts/refinem_snakemake.py -a {params.assembly} -b {params.bins} -m {params.bams} -s {params.rm_basedir} -r {params.reference}"
+
+
+
+# Side-Chains of the Pipeline
+
+rule run_prodigal:
+    input:
+        assembly=config["assembly"]
+    output:
+        faa=f"{config['assembly'].split('.')[0]}.faa",
+        out="Prodigal.out"
+    shell:
+        "prodigal -I {input.assembly} -a {output.faa} -o {output.out}"
