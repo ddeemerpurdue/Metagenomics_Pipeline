@@ -1,0 +1,24 @@
+# Metaspades
+
+assembly: "<path/to/assembly"
+
+index: "<path/to/assembly/index>"
+
+readpath: "<path/to/fastqs>"
+
+
+# MaxBin Specific
+
+maxbin_abunds: ["read1", "read2", ..., "readn"]
+
+
+# RefineM Specific
+
+refinem_bams: ["bam1","bam2", ..., "bamn"]
+reference: "<path/to/refinem/reference/files>"
+rm_basedir: "<base/directory/for/refinem/results>"
+
+
+# Prodigal/Hammer Files
+
+scg_hmms: "/path/to/scgs"
