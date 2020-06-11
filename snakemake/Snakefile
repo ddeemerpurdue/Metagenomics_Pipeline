@@ -1,57 +1,3 @@
-configfile: "config.yaml"
-
-
-rule index_assembly:
-    input:
-        config["assembly"]
-    params:
-        prefix=config["index"]
-    output:
-        directory(config["index"].split('/')[0]) 
-    shell:
-        """
-        mkdir {output}
-        chmod +rw {output}
-        bowtie2-build {input} {params.prefix}
-        """
-
-rule bowtie2_alignment:
-    input:
-        samples=lambda wildcards: expand(f"{config['readpath']}{wildcards.sample}_{{num}}_filtered.fastq.gz", num=['R1','R2']),
-        i=directory(config["index"].split('/')[0])
-    params:
-        index=directory(config["index"])
-    output:
-        "Bam/{sample}.bam"
-    shell:
-        "bowtie2 --threads 20 -x {params.index} -1 {input.samples[0]} -2 {input.samples[1]} | samtools view -b -o {output}"
-
-rule bam_sorting:
-    input:
-        "Bam/{sample}.bam"
-    output:
-        "Bam/{sample}.sorted.bam"
-    params:
-        prefix="pref.{sample}"
-    shell:
-        "samtools sort -@20 -T bam/{params.prefix} -o {output} {input}"
-
-rule bam_indexing:
-    input:
-        "Bam/{sample}.sorted.bam"
-    output:
-        "Bam/{sample}.sorted.bam.bai"
-    shell:
-        "samtools index {input} -o {output}"
-
-rule bbmap_stats:
-    input:
-        "Bam/{sample}.sorted.bam"
-    output:
-        "Abundances/{sample}.coverage.txt"
-    shell:
-        "pileup.sh in={input} out={output}"
-
 rule get_cov_file:
     input:
         "Abundances/{sample}.coverage.txt"
@@ -62,8 +8,7 @@ rule get_cov_file:
 
 rule get_abund_list:
     input:
-        expand(f"Abundances/{{files}}.abundance.txt", files=config['maxbin_abunds']),
-#        abund_dir=directory("Abundances")
+        expand(f"Abundances/{{files}}.abundance.txt", files=config['maxbin_abunds'])
     output:
         "Abundances/abundance_list.txt"
     script:
