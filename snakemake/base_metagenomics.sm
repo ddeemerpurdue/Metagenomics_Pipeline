@@ -1,0 +1,139 @@
+configfile: "config/config.yaml"
+
+# Default, static jobs to be performed:
+# Indexing - Alignment - Sort - Indexing
+
+rule index_assembly:
+    input:
+        config["assembly"]
+    params:
+        prefix=config["index"]
+    conda:
+        "envs/alignment.yaml"
+    output:
+        directory(config["index"].split('/')[0]) 
+    log:
+        "log/index.log"
+    shell:
+        """
+        mkdir {output}
+        chmod +rw {output}
+        bowtie2-build {input} {params.prefix} 2>&1 {log}
+        """
+
+rule bowtie2_alignment:
+    input:
+        samples=lambda wildcards: expand(f"{config['readpath']}{wildcards.sample}_{{num}}_filtered.fastq.gz", num=['R1','R2']),
+        i=directory(config["index"].split('/')[0])
+    params:
+        index=directory(config["index"])
+    conda:
+        "envs/alignment.yaml"
+    output:
+        "Bam/Default/{sample}.bam"
+    log:
+        "log/{sample}.log"
+    shell:
+        "bowtie2 --threads 20 -x {params.index} -1 {input.samples[0]} -2 {input.samples[1]} 2> {log} | samtools view -b -o {output}"
+
+rule bam_sorting:
+    input:
+        "Bam/Default/{sample}.bam"
+    output:
+        "Bam/Default/{sample}.sorted.bam"
+    params:
+        prefix="pref.{sample}"
+    shell:
+        "samtools sort -@20 -T Bam/{params.prefix} -o {output} {input}"
+
+rule bam_indexing:
+    input:
+        "Bam/Default/{sample}.sorted.bam"
+    output:
+        "Bam/Default/{sample}.tkn"
+    shell:
+        "samtools index -@20 {input} && touch {output}"
+
+# Filtering and Indexing
+
+rule filter_bams:
+    input:
+        "Bam/Default/{sample}.sorted.bam"
+    params:
+        readsize=150,
+        threshold=0.99
+    output:
+        "Bam/Filtered/{sample}.99f.sorted.bam"
+    shell:
+        "samtools view -h {input} | python scripts/sam_threshold_filter.py -s {params.readsize} -t {params.threshold} | samtools view -b -o {output} && samtools index -@20 {output}"
+
+# MaxBin2-Related Rules
+
+rule bbmap_stats:
+    input:
+        "Bam/{path}/{sample}.sorted.bam"
+    conda:
+        "envs/bbmap.yaml"
+    output:
+        "Abundances/{path}/{sample}.coverage.txt"
+    log:
+        "log/bbmap-abunds.{path}.{sample}.log"
+    shell:
+        "pileup.sh in={input} out={output}"
+
+rule get_cov_file:
+    input:
+        "Abundances/{path}/{sample}.coverage.txt"
+    output:
+        "Abundances/{path}/{sample}.abundance.txt"
+    shell:
+        "cut -f 1,5 {input} | grep -v '^#' > {output}"
+
+rule get_abund_list:
+    input:
+        samples=lambda wildcards: expand(f"Abundances/{wildcards.path}/{{sample}}.abundance.txt", sample=config['maxbin_abunds2'])
+    output:
+        "Abundances/{path}/abundance_list.txt"
+    script:
+        "scripts/make_abund_list.py"
+
+rule run_maxbin:
+    input:
+        abund="Abundances/{path}/abundance_list.txt",
+        scaff=config["assembly"]
+    output:
+        directory("Maxbin/{path}/MBALL")
+    log:
+        log1="logs/MaxBin/{path}.log"
+    shell:
+        """
+        module load MaxBin/2.2.3
+        run_MaxBin.pl -contig {input.scaff} -out {output} -abund_list {input.abund} 2> {log}
+        touch {output}
+        """
+
+rule run_checkm:
+    input:
+        directory("Maxbin/{path}/MBALL")
+    output:
+        directory("{input}/CHECKM")
+    shell:
+        "checkm lineage_wf -t 8 -x fasta {input} {output}"
+
+rule run_refinem:
+    input:
+#        checkm="CheckM/All",
+        abunds=expand(f"Abundances/Default/{{files}}.abundance.txt", files=config['maxbin_abunds']),
+        mb=directory("Maxbin/{path}"),
+    params:
+        assembly=config["assembly"],
+        bins=directory("Maxbin/{path}"),
+        bams=lambda wildcards: expand(f"Bam/{wildcards.path}/{{ref_bams}}.sorted.bam", ref_bams=config['refinem_bams']),
+        rm_basedir=config["rm_basedir"],
+        reference=config["reference"]
+    conda:
+        "envs/refinem.yaml"
+    output:
+        directory("RefineM/{path}")
+    shell:
+        "python scripts/refinem_snakemake.py -a {params.assembly} -b {params.bins} -m {params.bams} -s {params.rm_basedir} -r {params.reference}"
