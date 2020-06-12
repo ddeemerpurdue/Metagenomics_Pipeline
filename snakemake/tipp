@@ -1,0 +1,13 @@
+configfile: "config.yaml"
+
+rule tipp:
+	input:
+		samples=lambda wildcards: f"{config['samplepath']}{wildcards.samples}.filtered.fasta"
+	output:
+    		"{samples}"
+	log:
+    		"log/{samples}.log"
+	conda:
+		"tipp.yaml"
+	shell:
+		"run_abundance.py -f {input} -c .sepp/tipp.config -d {output}"
