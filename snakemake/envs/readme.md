@@ -1,6 +1,7 @@
     Folder containing conda environment files to be used for local rules.
     
 Rules:
+
 1.) Each env file should be specific to one rule unless multiple rules share the
 same dependencies.
 
