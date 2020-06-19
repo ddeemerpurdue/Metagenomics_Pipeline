@@ -31,7 +31,7 @@ def run_refinem(assembly, bins, bams, basedir, reference):
     sc_stats = os.path.join(stats_output_dir, 'scaffold_stats.tsv')
     outlier_output = os.path.join(basedir, 'outlier_output')
     subprocess.check_call(['refinem', 'outliers', sc_stats,
-                           outlier_output])
+                           outlier_output, '--no_plots'])
     outliers = os.path.join(basedir, 'outlier_output', 'outliers.tsv')
     genomic_filtered_output = os.path.join(basedir, 'genomic_filtered_output')
     subprocess.check_call(['refinem', 'filter_bins', '-x', 'fasta',
