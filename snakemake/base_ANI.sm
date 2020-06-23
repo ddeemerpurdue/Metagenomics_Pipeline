@@ -19,7 +19,7 @@ rule all:
         expand("split-files/{sample}/{sample}.complete.tkn", sample=config["assemblies"]),
         expand("lists/{sample}.{length}.txt", sample=config["assemblies"], length=config["length"]),
         expand("lists/{sample}.{length}_{splits}", sample=config["assemblies"], length=config["length"], splits=config["size"]),
-        #expand("output/{quer}.{ref}.{length}_{split}.txt", quer=config["assemblies"],ref=config["assemblies"],split=config["size"], length=config["length"])
+        expand("output/{quer}.{ref}.{length}_{split}.txt", quer=config["assemblies"],ref=config["assemblies"],split=config["size"], length=config["length"])
 
 rule filter_contigs:
     input:
@@ -66,4 +66,4 @@ rule run_fastani:
     output:
         outputs="output/{query}.{reference}.{length}_{split}.txt"
     shell:
-        "fastANI -t 20 --minFrag 10 --fragLen 1000 -q {input.lists} --rl {params.ref} -o {output.outputs}"
+        "fastANI -t 20 --minFraction 0.2 --fragLen 1000 -q {input.lists} --rl {params.ref} -o {output.outputs}"
