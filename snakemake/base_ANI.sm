@@ -14,12 +14,19 @@ configfile: "config/config.yaml"
 # Script files are located under ./base_ANI_scripts/
 
 
+configfile: "config/config.yaml"
+
+# Rule to produce all ANI results from multiple samples
+
+
 rule all:
     input:
         expand("split-files/{sample}/{sample}.complete.tkn", sample=config["assemblies"]),
         expand("lists/{sample}.{length}.txt", sample=config["assemblies"], length=config["length"]),
         expand("lists/{sample}.{length}_{splits}", sample=config["assemblies"], length=config["length"], splits=config["size"]),
-        expand("output/{quer}.{ref}.{length}_{split}.txt", quer=config["assemblies"],ref=config["assemblies"],split=config["size"], length=config["length"])
+        expand("output/{query}.{ref}.{length}_{split}.txt", query=config["assemblies"],ref=config["assemblies"],split=config["size"], length=config["length"]),
+        expand("output/{query}.{reference}.{length}.all.txt", query=config["assemblies"],reference=config["assemblies"],length=config["length"])
+        expand("output/All.{length}.txt", length=config["length"])
 
 rule filter_contigs:
     input:
@@ -60,10 +67,23 @@ rule split_lists:
 
 rule run_fastani:
     input:
-        lists="filtered-contigs/{query}.contigs.{length}.fasta"
+        lists="lists/{query}.{length}.txt"
     params:
         ref="lists/{reference}.{length}_{split}"
     output:
         outputs="output/{query}.{reference}.{length}_{split}.txt"
     shell:
-        "fastANI -t 20 --minFraction 0.2 --fragLen 1000 -q {input.lists} --rl {params.ref} -o {output.outputs}"
+        """
+        fastANI -t 20 --minFraction 0.2 --fragLen 1000 --ql {input.lists} --rl {params.ref} -o {output.outputs}
+        touch output/{query}.{reference}.COMPLETE.tkn
+        """
+
+rule concatenate_output:
+    input:
+        files=directory("output")
+    output:
+        outputs=expand("output/All.{length}.txt", length=config["length"])
+    shell:
+        """
+        cat {input.files}/*all.txt > {output.outputs}
+        """
