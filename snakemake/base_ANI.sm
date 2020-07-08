@@ -85,5 +85,5 @@ rule concatenate_output:
         outputs=expand("output/All.{length}.txt", length=config["length"])
     shell:
         """
-        cat {input.files}/*all.txt > {output.outputs}
+        cat {input.files}/*.txt > {output.outputs}
         """
