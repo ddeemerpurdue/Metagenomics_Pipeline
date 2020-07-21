@@ -75,7 +75,7 @@ rule run_fastani:
     shell:
         """
         fastANI -t 20 --minFraction 0.2 --fragLen 1000 --ql {input.lists} --rl {params.ref} -o {output.outputs}
-        touch output/{query}.{reference}.COMPLETE.tkn
+        touch output/{wildcards.query}.{wildcards.reference}.COMPLETE.tkn
         """
 
 rule concatenate_output:
