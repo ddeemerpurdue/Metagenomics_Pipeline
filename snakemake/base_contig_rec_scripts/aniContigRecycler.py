@@ -1,30 +1,16 @@
 """
 Program designed to take an ANI input file annotated
 with bin IDs and repatriate contigs
-
 Input:
 Tab-delimited file with fields:
 Input from add_ani_bins.py!
 Query, Reference, Qnode, Rnode, ANI, Orthos, Total, Qbin, Rbin
 
+Example usage:
+$ python aniContigRecycler.py -a ANIFILE.txt -t 90 -m 200 -o output90T200M.txt
 """
 import pandas as pd
 import argparse
-
-
-""" Arguments """
-parser = argparse.ArgumentParser(description="Parser")
-parser.add_argument("-a", "--ANI", help="ANI master file", required=True)
-parser.add_argument("-t", "--Threshold", help="ANI threshold to consider \
-matches", default=90)
-parser.add_argument("-m", "--Matches", help="How many binning contigs must \
-match the reference bin", default=10)
-parser.add_argument("-o", "--Output", help="Output file to write to",
-                    required=True)
-parser.add_argument("-w", "--Write", help="If provided, write files for \
-                     binners, nonbinners, and binners/nonbinners",
-                     required=False, action='store_true')
-argument = parser.parse_args()
 
 
 def get_cois(file, threshold):
@@ -207,9 +193,21 @@ def write_recycled_bins(file, threshold, matches, output):
 
 
 if __name__ == "__main__":
+    """ Arguments """
+    parser = argparse.ArgumentParser(description="Parser")
+    parser.add_argument("-a", "--ANI", help="ANI master file", required=True)
+    parser.add_argument("-t", "--Threshold", help="ANI threshold to consider \
+    matches", default=90)
+    parser.add_argument("-m", "--Matches", help="How many binning contigs must\
+    match the reference bin", default=10, required=False)
+    parser.add_argument("-o", "--Output", help="Output file to write to",
+                        required=False)
+    parser.add_argument("-w", "--Write", help="If provided, write files for \
+                        binners, nonbinners, and binners/nonbinners",
+                        required=False, action='store_true')
+    argument = parser.parse_args()
     if argument.Write:
         write_cois(argument.ANI, argument.Threshold)
     else:
-        pass
-    write_recycled_bins(argument.ANI, argument.Threshold, argument.Matches,
-                        argument.Output)
+        write_recycled_bins(argument.ANI, argument.Threshold,
+                            argument.Matches,argument.Output)
