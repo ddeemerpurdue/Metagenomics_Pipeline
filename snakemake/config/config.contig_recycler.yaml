@@ -1,0 +1,11 @@
+# Example:
+
+anifile: ParticleSupernatantRawANIs
+
+assembly: /depot/lindems/etc/frickera/supernatant_normal_contigs_500.fasta
+
+samplename: supernatant
+
+threshold: 95
+
+matches: 40
