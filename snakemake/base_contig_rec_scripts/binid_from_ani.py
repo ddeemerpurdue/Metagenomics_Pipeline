@@ -1,5 +1,5 @@
 """
-Program that takes in an ANI file and outputs the
+Program that takes in a standardized ANI file and outputs the
 node and bin number
 
 Example:
