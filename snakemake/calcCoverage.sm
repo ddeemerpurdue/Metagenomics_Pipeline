@@ -1,0 +1,27 @@
+'''
+Ash supernatant .bam files example. Patterns will need to be changed.
+'''
+allsamples = []
+for i, j in zip(range(685, 720), range(1, 36)):
+    one = f"030{str(i)}_{str(j)}_S{str(j)}_R1"
+    two = f"030{str(i)}_{str(j)}_S{str(j)}_R2"
+    allsamples.extend([one, two])
+allsamples.remove("030691_7_S7_R1")
+
+
+rule all:
+    input:
+        expand("Counts/Supernatant/{sample}.count", sample=allsamples)
+
+
+rule run_htseqcount:
+    input:
+        cursample="supernatant_normal_contigs_500_maxbin/{sample}_filtered_sort.bam"
+    conda:
+        "envs/py27.yml"
+    output:
+        curoutput="Counts/Supernatant/{sample}.count"
+    shell:
+        """
+        htseq-count -f bam -r pos -t contig --stranded=no {input.cursample} supernatant.gff > {output.curoutput}
+        """
