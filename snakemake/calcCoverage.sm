@@ -1,6 +1,15 @@
 '''
-Ash supernatant .bam files example. Patterns will need to be changed.
+Author: Dane Deemer
+Purpose: To take in 1 or more .Bam files and get a count value for each feature in the .BAM file.
+Directories and file patterns will need to be changed, but the skeleton should suffice.
+Note: A .GFF file must be provided. In the case of counting reads per each contig, a .GFF file will
+need to be created that has entries corresponding to each contig.
+Also note that htseq-count - when using "module load HTSeqcount" on Snyder is outdated and defaults
+back to python2, a version incompatible with snakemake. Make sure to run htseq-count via installation
+on pip (pip install HTSeq) for compatibility with python3.
 '''
+
+# Below, pattern matching to get a list of wildcards needed for "rule all"
 allsamples = []
 for i, j in zip(range(685, 720), range(1, 36)):
     one = f"030{str(i)}_{str(j)}_S{str(j)}_R1"
@@ -17,8 +26,6 @@ rule all:
 rule run_htseqcount:
     input:
         cursample="supernatant_normal_contigs_500_maxbin/{sample}_filtered_sort.bam"
-    conda:
-        "envs/py27.yml"
     output:
         curoutput="Counts/Supernatant/{sample}.count"
     shell:
