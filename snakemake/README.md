@@ -27,7 +27,7 @@ cluster.json
 - File containing information to submit snakemake job to SLURM
 config.yaml
 - Theoretically this job should be the only file, not including the files inside of the input folder,
-    that get's changed from analysis to analysis. This file contains project information and file path
+    that gets changed from analysis to analysis. This file contains project information and file path
     locations.
 envs/*.yaml
 - Files specifying the dependencies to be used by the pipeline
