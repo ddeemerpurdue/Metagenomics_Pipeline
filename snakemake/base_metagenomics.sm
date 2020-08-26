@@ -17,6 +17,7 @@ Assembly Indexing - Alignment - Sorting - Bam Indexing
 rule all:
     input:
         expand("AssemblyIndex/{index}.1.bt2", index=config['index'])
+        expand("Bam/{sample}.bam", sample=config['samples'])
 
 rule index_assembly:
     input:
@@ -31,7 +32,7 @@ rule index_assembly:
     output:
         f"AssemblyIndex/{config['index']}.1.bt2"
     log:
-        f"log/assemblyIndexing.{config['index']}.log"
+        f"logs/assemblyIndexing.{config['index']}.log"
     shell:
         """
         bowtie2-build -f --threads {params.threads} {input} AssemblyIndex/{params.index} >> {log}
@@ -39,37 +40,44 @@ rule index_assembly:
 
 rule bowtie2_alignment:
     input:
-        samples=lambda wildcards: expand(f"{config['readpath']}{wildcards.sample}_{{num}}_filtered.fastq.gz", num=['R1','R2']),
-        i=directory(config["index"].split('/')[0])
+        reads=expand("{path}{{sample}}_{num}_10000.fastq", path=config['readpath'], num=['R1','R2']),
+        i=f"AssemblyIndex/{config['index']}.1.bt2"
     params:
-        index=directory(config["index"])
+        index=f"AssemblyIndex/{config['index']}",
+        threads=config['threads']
     conda:
         "envs/alignment.yaml"
     output:
-        "Bam/Default/{sample}.bam"
+        temp("Bam/{sample}.bam")
     log:
-        f"log/bowtie2Alignment.{sample}.log"
+        "logs/bowtie2Alignment.{sample}.log"
     shell:
-        "bowtie2 --threads 20 -x {params.index} -1 {input.samples[0]} -2 {input.samples[1]} 2> {log} | samtools view -b -o {output}"
+        "bowtie2 --threads {params.threads} -x {params.index} -1 {input.reads[0]} -2 {input.reads[1]} | samtools view -b -o {output} 2> {log}"
 
 rule bam_sorting:
     input:
-        "Bam/Default/{sample}.bam"
+        "Bam/{sample}.bam"
     output:
-        "Bam/Default/{sample}.sorted.bam"
+        protected("Bam/{sample}.sorted.bam")
     params:
-        prefix="pref.{sample}"
+        prefix="Bam/pref.{sample}",
+        threads=config['threads']
+    log:
+        "logs/samtoolsSort.{sample}.log"
     shell:
-        "samtools sort -@20 -T Bam/{params.prefix} -o {output} {input}"
+        "samtools sort -@{params.threads} -T {params.prefix} -o {output} {input} > {log}"
 
 rule bam_indexing:
     input:
-        "Bam/Default/{sample}.sorted.bam"
+        "Bam/{sample}.sorted.bam"
     output:
-        "Bam/Default/{sample}.tkn"
+        "Bam/{sample}.sorted.bai"
+    log:
+        "logs/samtoolsIndex.{sample}.log"
     shell:
-        "samtools index -@20 {input} && touch {output}"
+        "samtools index -@20 {input} > {log}"
 
+''' Everything Above Should Be Very Clean '''
 # Filtering and Indexing
 
 rule filter_bams:
