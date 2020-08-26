@@ -1,9 +1,12 @@
 configfile: "config/config.yaml"
 '''
 configfile should have the following attributes:
+<index_assembly>
 - assembly
 - index  # Unique identifier per sample
 - threads
+<bowtie2_alignment>
+- readpath
 '''
 
 '''
@@ -28,7 +31,7 @@ rule index_assembly:
     output:
         f"AssemblyIndex/{config['index']}.1.bt2"
     log:
-        "log/assemblyIndexing.log"
+        f"log/assemblyIndexing.{config['index']}.log"
     shell:
         """
         bowtie2-build -f --threads {params.threads} {input} AssemblyIndex/{params.index} >> {log}
@@ -45,7 +48,7 @@ rule bowtie2_alignment:
     output:
         "Bam/Default/{sample}.bam"
     log:
-        "log/{sample}.log"
+        f"log/bowtie2Alignment.{sample}.log"
     shell:
         "bowtie2 --threads 20 -x {params.index} -1 {input.samples[0]} -2 {input.samples[1]} 2> {log} | samtools view -b -o {output}"
 
