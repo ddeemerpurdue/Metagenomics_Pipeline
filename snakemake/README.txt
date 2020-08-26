@@ -2,9 +2,9 @@
 
 Initial tree structure of working directory should follow this pattern:
 
-.\n
-├── config\n
-│   ├── cluster.json\n
+.
+├── config
+│   ├── cluster.json
 │   └── config.yaml
 ├── input
 │   ├── assembly
