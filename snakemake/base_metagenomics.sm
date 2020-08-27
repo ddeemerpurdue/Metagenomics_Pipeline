@@ -1,18 +1,18 @@
 configfile: "config/config.yaml"
 '''
 configfile should have the following attributes:
-<index_assembly>
+Step 0:
 - assembly
 - index  # Unique identifier per sample
 - threads
-<bowtie2_alignment>
 - readpath
+Step 1:
+- readsize
+- threshold
+- maxbin_abunds
+- refinem_bams
 '''
 
-'''
-Default, static jobs to be performed:
-Assembly Indexing - Alignment - Sorting - Bam Indexing
-'''
 
 rule all:
     input:
@@ -20,7 +20,9 @@ rule all:
         expand("Bam/{sample}.bam", sample=config['samples'])
 
 
-# PART 0
+# PART 0: Essentials
+[Assembly Indexing - Alignment - Bam Sorting - Bam Indexing]
+Speed: **
 ''' Essentials Start '''
 
 # index_assembly: index the assembly (or any fasta file)
@@ -88,9 +90,11 @@ rule bam_indexing:
         "samtools index -@20 {input} &> {log}"
 
 ''' Essentials Complete '''
+''' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ '''
 
-
-# PART 1
+# PART 1: Base Processing
+[Bam Filtering - Calculating Coverage - Abundance Filter - Abundance File Merge]
+Speed: ****
 ''' Base Processing Start '''
 
 # filter_bams: filter BAM files to only contain reads mapping above a certain threshold of percent identity.
@@ -100,17 +104,18 @@ rule filter_bams:
     params:
         readsize=config['readsize'],
         threshold=config['threshold']
+    conda:
+        "envs/alignment.yaml"
     output:
         "Bam/Filtered/{sample}.{params.threshold}F.sorted.bam"
     log:
         "logs/bamFiltering.{sample}.log"
     shell:
-        "samtools view -h {input} | python scripts/sam_threshold_filter.py -s {params.readsize} -t {params.threshold} | samtools view -b -o {output} && samtools index -@20 {output}"
+        "(samtools view -h {input} | python scripts/sam_threshold_filter.py -s {params.readsize} -t {params.threshold} | samtools view -b -o {output} && samtools index -@20 {output}) &> {log}"
 
-# MaxBin2-Related Rules
-
+# bbmap_stats: Calculate coverage stats per contig
 rule bbmap_stats:
-    input:
+    input:  # Wildcard path used for filtered or normal: for normal, path == "."
         "Bam/{path}/{sample}.sorted.bam"
     conda:
         "envs/bbmap.yaml"
@@ -119,7 +124,7 @@ rule bbmap_stats:
     log:
         "log/bbmap-abunds.{path}.{sample}.log"
     shell:
-        "pileup.sh in={input} out={output}"
+        "pileup.sh in={input} out={output} &> {log}"
 
 rule get_cov_file:
     input:
@@ -127,7 +132,7 @@ rule get_cov_file:
     output:
         "Abundances/{path}/{sample}.abundance.txt"
     shell:
-        "cut -f 1,5 {input} | grep -v '^#' > {output}"
+        "cut -f 1,5 {input} | grep -v '^#' > {output} 2> {log}"
 
 rule get_abund_list:
     input:
@@ -141,14 +146,16 @@ rule run_maxbin:
     input:
         abund="Abundances/{path}/abundance_list.txt",
         scaff=config["assembly"]
+    conda:
+        "envs/binning.yaml"
     output:
         directory("Maxbin/{path}/MBALL")
     log:
-        log1="logs/MaxBin/{path}.log"
+        log1="logs/maxbin2_{path}_.log"
     shell:
         """
         module load MaxBin/2.2.3
-        run_MaxBin.pl -contig {input.scaff} -out {output} -abund_list {input.abund} 2> {log}
+        run_MaxBin.pl -contig {input.scaff} -out {output} -abund_list {input.abund} &> {log}
         touch {output}
         """
 
