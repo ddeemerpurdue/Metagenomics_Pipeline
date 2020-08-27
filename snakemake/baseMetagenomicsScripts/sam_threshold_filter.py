@@ -23,6 +23,7 @@ if argument.Input == sys.stdin:
     def filter_same_percent_identity(
             infile, outfile, readsize, threshold, md=17):
         ''' Function that filters a .SAM file based on a defined threshold '''
+        md = int(md)
         low_identity = 0
         header_flag = False
         for line in argument.Input:
@@ -35,10 +36,10 @@ if argument.Input == sys.stdin:
 provided. Please remember to use the -h option when using samtools view!')
                 rline = line.split('\t')
                 entry_matches = 0
-                if len(rline) > 13:
+                if len(rline) >= 13:
                     matches = (
                         [int(i) for i in
-                         re.findall(r'\d+', rline[17])]
+                         re.findall(r'\d+', rline[md])]
                     )
                     for m in matches:
                         entry_matches = entry_matches + m
@@ -68,15 +69,15 @@ option -h when using samtools view.')
                         else:
                             rline = line.split('\t')
                             entry_matches = 0
-                            if len(rline) > 17:
+                            if len(rline) >= md:
                                 matches = (
                                     [int(i) for i in
-                                     re.findall(r'\d+', rline[17])]
+                                     re.findall(r'\d+', rline[md])]
                                 )
                                 for m in matches:
                                     entry_matches = entry_matches + m
                                 if ((entry_matches / int(readsize)) >
-                                     float(threshold)):
+                                        float(threshold)):
                                     outf.write(line)
                                 else:
                                     low_identity += 1
