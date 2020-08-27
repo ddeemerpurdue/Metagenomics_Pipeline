@@ -1,24 +1,22 @@
-# Metaspades
+'''
+Configuration file for baseMetagenomics.smk
+- The specific information contained in this file
+will be changed from analysis to analysis.
 
-assembly: "<path/to/assembly"
+This file contains a running list of all config variable that
+could possibly be needed in the snakemake file.
+- Add to this as necessary.
+'''
 
-index: "<path/to/assembly/index>"
+# Required Attributes:
+# Step 0
+assembly: [/path/to/myassembly.fasta]
+index: [/path/to/index]
+threads: 20
 
-readpath: "<path/to/fastqs>"
+# Step 1
+readsize: 150
+threshold: 0.99
+maxbin_abunds: [/path/to/abundA, ..., /path/to/abundN]
+refinem_bams: [/path/to/bamA, ..., /path/to/bamN]
 
-
-# MaxBin Specific
-
-maxbin_abunds: ["read1", "read2", ..., "readn"]
-
-
-# RefineM Specific
-
-refinem_bams: ["bam1","bam2", ..., "bamn"]
-reference: "<path/to/refinem/reference/files>"
-rm_basedir: "<base/directory/for/refinem/results>"
-
-
-# Prodigal/Hammer Files
-
-scg_hmms: "/path/to/scgs"
