@@ -21,8 +21,8 @@ rule all:
 
 
 # PART 0: Essentials
-[Assembly Indexing - Alignment - Bam Sorting - Bam Indexing]
-Speed: **
+# [Assembly Indexing - Alignment - Bam Sorting - Bam Indexing]
+# Speed: **
 ''' Essentials Start '''
 
 # index_assembly: index the assembly (or any fasta file)
@@ -93,8 +93,8 @@ rule bam_indexing:
 ''' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ '''
 
 # PART 1: Base Processing
-[Bam Filtering - Calculating Coverage - Abundance Filter - Abundance File Merge]
-Speed: ****
+# [Bam Filtering - Calculating Coverage - Abundance Filter - Abundance File Merge]
+# Speed: ****
 ''' Base Processing Start '''
 
 # filter_bams: filter BAM files to only contain reads mapping above a certain threshold of percent identity.
