@@ -27,13 +27,9 @@ wdir = os.getcwd()
 
 mylist = []
 infile = infile.split()
-print(infile)
 for f in infile:
-    print(f)
     if f.endswith('abundance.txt'):
         mylist.append(f)
-
-print(mylist)
 
 with open(outfile, 'w') as o:
     for f in mylist:
