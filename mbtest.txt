@@ -1,2 +1,0 @@
-assembly	bins	bam	base	reference
-my/assembly	my/bins	b/bam	ba/base	r/reference
