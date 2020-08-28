@@ -9,5 +9,6 @@ dependencies:
   - freebays=2.10.2=h5ab3b9f_0
   - maxbin2=2.2.7=he1b5a44_0
   - mummer=3.23=pl526he1b5a44_10
+  - nucdiff=2.0.3=pyh864c0ab_1
   - refinem=0.1.1=py_0
   - samtools=1.6=h02bfda8_2
