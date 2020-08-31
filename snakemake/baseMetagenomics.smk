@@ -159,28 +159,61 @@ rule run_maxbin:
         touch {output}
         """
 
+# Estimate completion and contamination for original binning
 rule run_checkm:
     input:
-        directory("Maxbin/{path}/MBALL")
+        "Maxbin/{path}/{path}.log"
+    conda:
+        "envs/binning.yaml"
+    params:
+        threads=config['threads'],
+        out="CheckM/{path}/"
     output:
-        directory("{input}/CHECKM")
+        "CheckM/{path}/lineage.ms"
+    log:
+        "logs/checkm_{path}.log"
     shell:
-        "checkm lineage_wf -t 8 -x fasta {input} {output}"
+        """
+        checkm lineage_wf -t {params.threads} -x fasta {input} {params.out} &> {log}
+        checkm qa -t {params.threads} {output} {params.out} &> {log}
+        """
 
+# Further refine bins using refineM
+# Change the below variable!!!
+rm_path = "Default"
 rule run_refinem:
     input:
-#        checkm="CheckM/All",
-        abunds=expand(f"Abundances/Default/{{files}}.abundance.txt", files=config['maxbin_abunds']),
-        mb=directory("Maxbin/{path}"),
+        bam=expand("Bam/{mypath}/{sample}.sorted.bam", mypath=rm_path, sample=config['refinem_abunds']),
+        mb=directory("Maxbin/{path}/")
     params:
         assembly=config["assembly"],
-        bins=directory("Maxbin/{path}"),
-        bams=lambda wildcards: expand(f"Bam/{wildcards.path}/{{ref_bams}}.sorted.bam", ref_bams=config['refinem_bams']),
-        rm_basedir=config["rm_basedir"],
         reference=config["reference"]
     conda:
         "envs/refinem.yaml"
     output:
         directory("RefineM/{path}")
+    log:
+        "logs/refinem_{path}.log"
     shell:
-        "python scripts/refinem_snakemake.py -a {params.assembly} -b {params.bins} -m {params.bams} -s {params.rm_basedir} -r {params.reference}"
+        "python scripts/refinem_snakemake.py -a {params.assembly} -b ../{input.mb} -m ../{input.bam} -s RefineM -r {params.reference} &> {log}"
+
+''' Complete this last part later '''
+# Estimate completion and contamination after refinement
+rule run_checkm:
+    input:
+        "RefineM/{path}/{path}.log"
+    conda:
+        "envs/binning.yaml"
+    params:
+        threads=config['threads'],
+        out="CheckM/{path}/"
+    output:
+        "CheckM/{path}/lineage.ms"
+    log:
+        "logs/checkm_{path}.log"
+    shell:
+        """
+        checkm lineage_wf -t {params.threads} -x fasta {input} {params.out} &> {log}
+        checkm qa -t {params.threads} {output} {params.out} &> {log}
+        """
+''' Complete this last part later '''
