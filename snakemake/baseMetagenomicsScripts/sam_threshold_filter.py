@@ -93,3 +93,7 @@ if __name__ == '__main__':
     else:
         filter_same_percent_identity(argument.Input, argument.Output,
                                      argument.Readsize, argument.Threshold)
+    # Logging the information - can be updated later
+    with open(str(snakemake.log), 'w') as logfile:
+        logfile.write(f"Filtering the file: {snakemake.input} with the following parameters:\n")
+        logfile.write(f"Read size: {argument.Readsize}\nThreshold: {argument.Threshold}\nMD Column: {argument.mdColumn}")
