@@ -19,4 +19,4 @@ readsize: 150
 threshold: 0.99
 maxbin_abunds: [/path/to/abundA, ..., /path/to/abundN]
 refinem_bams: [/path/to/bamA, ..., /path/to/bamN]
-
+reference: ["/scratch/snyder/d/ddeemer/WhiteRed/Red1/reference"]
