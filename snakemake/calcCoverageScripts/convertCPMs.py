@@ -1,7 +1,27 @@
-import sys
+'''
+Author: Dane
+Script designed to convert raw counts (e.g., output from htseq-count) into CPMs.
+If the contig node is specified vs. a particular feature, then the script will
+have to be ran slightly different.
+Example usage:
+1.) When count file has contig node as first field and count as second:
+python convertCPMs.py -g <gff.gff> -f 0 -c <htseqCountfile.txt>
+2.) When count file has a feature as field field and count as second:
+python convertCPMs.py -g <gff.gff> -f 8 -c <htseqCountfile.txt> -n tigrfam_acc
+Note: field 8 of the gff file is where the feature attributes are located, so
+here we specified we are looking to count a feature (-f 8) and the specific
+type of feature is tigrfam_acc (-n tigrfam_acc)
+'''
 
 
 def get_GFF_length_dic(gff, featColumn, featName=None):
+    '''
+    Read in a GFF file and output a dictionary in the format:
+    dict[feature]: length
+    For contigs, this will be total contig length. For a specific
+    feature predicted by prodigal/an annotator, this will be the CDS
+    region length.
+    '''
     length_dic = {}
     with open(gff) as g:
         line = g.readline()  # Skip header
@@ -25,6 +45,10 @@ def get_GFF_length_dic(gff, featColumn, featName=None):
 
 
 def calcRPK(raw, length):
+    '''
+    Convert raw read counts into reads per kilobase.
+    Length is the length of the feature.
+    '''
     raw = int(raw)
     length = int(length)
     kblength = length / 1000
@@ -70,5 +94,19 @@ def process_htseqcount_output(gffFile, featColumn, htseqFile,
 
 
 if __name__ == '__main__':
-    process_htseqcount_output(sys.argv[1], sys.argv[2], sys.argv[3],
-                              featName=sys.argv[4])
+    import argparse
+    ''' Arguments '''
+    parser = argparse.ArgumentParser(description="Parser")
+    parser.add_argument("-g", "--GFF", required=True,
+                        help="GFF file used for counting.")
+    parser.add_argument("-f", "--FeatureCol", help="Feature column",
+                        required=True)
+    parser.add_argument("-c", "--CountFile", help="Count file output. 2 fields (tab-delimited)",
+                        required=True)
+    parser.add_argument("-n", "--FeatureName", help="Feature column",
+                        required=False, default=None)
+    argument = parser.parse_args()
+    ''' Arguments '''
+    process_htseqcount_output(argument.GFF, argument.FeatureCol,
+                              argument.CountFile,
+                              featName=argument.FeatureName)
