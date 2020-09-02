@@ -1,4 +1,11 @@
-import sys
+'''
+Author: Dane
+Script that takes in a GFF file and filters it by feature type, outputting
+only entries that have a hit for a specified feature type. For example, if
+one wants to filter for all entries that have a 'tigrfam_acc' hit:
+Example usage:
+python trimGFFByFeature.py -b <binIdFile.txt> -g <gff.gff> -n tigrfam_acc
+'''
 
 
 def bin_dict(binfile):
@@ -50,4 +57,15 @@ def trim_gff_by_feature(binfile, gff, feat_name):
 
 
 if __name__ == "__main__":
-    trim_gff_by_feature(sys.argv[1], sys.argv[2], sys.argv[3])
+    import argparse
+    ''' Arguments '''
+    parser = argparse.ArgumentParser(description="Parser")
+    parser.add_argument("-b", "--BinId", required=True,
+                        help="Bin identification file (2 tab-delim fields, node\tbin)")
+    parser.add_argument("-g", "--GFF", help="GFF file to filter",
+                        required=True)
+    parser.add_argument("-n", "--FeatureName", help="Feature name to filter by",
+                        required=True)
+    argument = parser.parse_args()
+    ''' Arguments '''
+    trim_gff_by_feature(argument.BinID, argument.GFF, argument.FeatureName)
