@@ -69,3 +69,14 @@ rule calc_TPM:
         """
         python convert_cpms.py {params.gff} {params.fcol} {input.cursample} {params.fname}
         """
+        
+rule calc_mean_CPM:
+    input:
+        forward="Counts/SupernatantGenes/{sample}_R1.processed.cpm.txt",
+        reverse="Counts/SupernatantGenes/{sample}_R2.processed.cpm.txt"
+    output:
+        "Counts/SupernatantGenes/Means/{sample}.processed.cpm.mean.txt"
+    shell:
+        """
+        python calcMeanCounts.py -f {input.forward} -r {input.reverse} -o {output}
+        """
