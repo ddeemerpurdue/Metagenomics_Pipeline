@@ -64,3 +64,12 @@ if __name__ == "__main__":
                         help="Forward file")
     parser.add_argument("-r", "--Reverse", required=True,
                         help="Reverse file")
+    parser.add_argument("-o", "--Output", required=False,
+                        help="Output file name")
+    argument = parser.parse_args()
+    ''' Arguments '''
+    if argument.Output:
+        calculate_FR_deviation(argument.Forward, argument.Reverse,
+                               argument.Output)
+    else:
+        calculate_FR_deviation(argument.Forward, argument.Reverse)
