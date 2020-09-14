@@ -1,4 +1,11 @@
-# Step 1:
+'''
+Author: Dane
+Snakemake-specific python file that takes in a file, in_list, that contains
+each .fa file path for the filtered assembly (each line is a .fa entry).
+The output is a file with the same name as in_list except instead of ending
+in .txt it ends in _{splits}.txt. The goal is to split the in_list file into
+n separate files in order to parallelize downstream processes.
+'''
 
 import os
 import sys
