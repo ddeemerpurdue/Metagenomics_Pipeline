@@ -191,6 +191,13 @@ def write_recycled_bins(file, threshold, matches, output):
     with open(output, 'w') as o:
         for line in a:
             o.write(line)
+            # Now write a new bin identification file for each sample
+            sample = line.split('\t')[0]
+            contig = line.split('\t')[2]
+            bin_num = line.split('\t')[4].strip()
+            bin_file = f"{sample}.RepatANI.txt"
+            with open(bin_file, 'a') as bin_out:
+                bin_out.write(f"{bin_num}\t{contig}\n")
     return None
 
 
