@@ -1,6 +1,7 @@
 """
-Program designed to take an ANI input file annotated
-with bin IDs and repatriate contigs
+Author: Dane
+Program designed to take an ANI input file annotated with bin IDs and
+repatriate contigs based on across-sample ANI values.
 
 Input:
 Tab-delimited file with fields:
@@ -9,7 +10,6 @@ Query, Reference, Qnode, Rnode, ANI, Orthos, Total, Qbin, Rbin
 
 Example usage:
 $ python aniContigRecycler.py -a ANIFILE.txt -t 90 -m 200 -o output90T200M.txt
-
 """
 import pandas as pd
 import argparse
