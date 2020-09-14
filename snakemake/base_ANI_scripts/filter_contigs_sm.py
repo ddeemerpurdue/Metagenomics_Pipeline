@@ -1,3 +1,8 @@
+'''
+Author: Dane
+Snakemake specific script that makes a call to filter_fast.py to filter
+assemblies to only contain contigs >= {params.length}
+'''
 # Step 1
 from filter_fast import *
 
