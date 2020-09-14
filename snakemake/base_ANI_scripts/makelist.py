@@ -33,4 +33,3 @@ for in_contig, out in zip(in_contigs, out_list):
         for l in line:
             o.write(str(directory) + '/' + str(l))
             o.write('\n')
-
