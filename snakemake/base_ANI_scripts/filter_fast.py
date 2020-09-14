@@ -1,50 +1,31 @@
-''' Program to filter .FASTA files based on sequences
+'''
+Program to filter .FASTA files based on sequences
 that are at least N nucleotides long
 Example usage:
-$ python filter_seqlength.py <input.fasta> <length_threshold> <output.fasta>
+$ python filterSeqlength.py <input.fasta> <length_threshold> <output.fasta>
 '''
 
 import sys
+from Bio import SeqIO
+from Bio.SeqIO.FastaIO import SimpleFastaParser
 
-
-def read_fasta(file):
-    """ Open up a .fasta file and return a dictionary containing the header
-    as the key and [filename, length, & gc_cont] as values """
-    fasta_dict = {}
-    with open(file) as f:
-        line = f.readline()
-        while line:
-            if line.startswith('>') or line.startswith('NODE'):
-                header = line.strip()
-                line = f.readline()
-                nucleotides = ''
-            else:
-                nucleotides = nucleotides + line.strip()
-                line = f.readline()
-                fasta_dict[header] = nucleotides
-    return fasta_dict
-
-
-def filter_fasta(file, length):
-    fa = read_fasta(file)
-    newfa = {}
-    for key in fa.keys():
-        if len(fa[key]) < length:
-            pass
-        else:
-            newfa[key] = fa[key]
-    return newfa
-
-
-def write_fasta(file, length, output):
-    filtered = filter_fasta(file, int(length))
+def filter_fasta(file, size, output):
+    """
+    Open up a .fasta file and write only entries with
+    sequences > a specified length.
+    """
     with open(output, 'w') as o:
-        for key, value in filtered.items():
-            o.write(key)
-            o.write('\n')
-            o.write(value)
-            o.write('\n')
+        with open(file) as f:
+            for values in SimpleFastaParser(f):
+                defline = values[0]
+                length = len(values[1])
+                if length > int(size):
+                    o.write(defline)
+                    o.write(values[1])
+                else:
+                    pass
+    return 0
 
 
 if __name__ == "__main__":
-    write_fasta(sys.argv[1], sys.argv[2], sys.argv[3])
+    filter_fasta(sys.argv[1], sys.argv[2], sys.argv[3])
