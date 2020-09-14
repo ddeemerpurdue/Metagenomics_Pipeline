@@ -2,42 +2,64 @@
 Author: Dane
 Remove contamination from a metagenomic analysis by
 comparing bit-scores across contig annotations vs.
-full bin annotations. Scores are obtained from a source
-such as CATBAT.
+full bin annotations. Scores are obtained from CATBAT.
+Requirements:
+*.Bin2C.names.txt [Default CATBAT output ran on bins]
+*.C2C.names.txt [Default CATBAT output ran on contigs]
+
 Example usage:
-$ python taxonFilter.py -b binFile.txt -c masterDB.txt -m 0.70
+$ python taxonFilter.py -b sample.Bin2C.names.txt -c sample.C2C.names.txt -m 0.70
 -a 0.50 -o outputFile.txt
 '''
 
 
-def read_bin_taxonomies(binCategoricalFile):
+def read_taxonomy(taxonFile, bins=False):
     '''
-    Function designed to read in a categorical bin file and return a
-    dictionary containing the bin number and taxonomy.
+    Function designed to read in *Bin2C.names.txt file
+    or a *.C2C.names.txt file from running Bat or Cat
+    (in CATBAT)
     '''
     bin_dic = {}
-    with open(binCategoricalFile) as i:
-        line = i.readline()  # Skip header
+    with open(taxonFile) as i:
         line = i.readline()
         while line:
-            line = line.split('\t')
-            binName = line[0]
-            binTaxon = line[1]
-            bin_dic[binName] = binTaxon
+            if line.startswith('#'):
+                line = i.readline()
+            else:
+                line = line.strip().split('\t')
+                if bins is True:
+                    name = line[0].split('.')[1]
+                else:
+                    name = line[0]
+                binTaxon = line[5:]
+                bin_dic[name] = binTaxon
+                line = i.readline()
+    return bin_dic
+
+
+def read_bin_identifier(binfile):
+    '''
+    Read in a bin ID file in the format of:
+    dict[bin_num] = node
+    '''
+    bin_dic = {}
+    with open(binfile) as i:
+        line = i.readline()
+        while line:
+            bin_num = line.split('\t')[0]
+            contig = line.split('\t')[1].strip()
+            bin_dic[contig] = bin_num
             line = i.readline()
     return bin_dic
 
 
-def compare_taxonomies(contigTaxon, binTaxon, threshold):
+def compare_taxonomies(contigTax, binTax, threshold):
     '''
     Function designed to compare taxonomies. The return value (True, False)
     can be used by another function to remove the contig from the bin and
     look for another bin to place the contig into.
     '''
-    remove = False
     threshold = float(threshold)
-    contigTax = contigTaxon.split(',')
-    binTax = binTaxon.split(',')
     matches = 0
     total = 0
     '''
@@ -45,8 +67,8 @@ def compare_taxonomies(contigTaxon, binTaxon, threshold):
     of taxonomic annotations because zipping will only compare the first n
     values, where n is the length of the shorter list.
     '''
-    if binTaxon == 'NoTaxon':
-        return remove
+    if binTax == 'NoBin':
+        return True
     for cval, bval in zip(contigTax, binTax):
         curcon = cval.split(':')
         curbin = bval.split(':')
@@ -62,11 +84,14 @@ def compare_taxonomies(contigTaxon, binTaxon, threshold):
             except ValueError:
                 bin_bitscore = float(curbin[2])
             if (bitscore > threshold and bin_bitscore > threshold):
-                remove = True
+                # Here return true since they diverge significantly
+                return True
             else:
                 pass
         total += 1
-    return remove
+    # If the contigTaxon is not 'NoBin' and does not diverge from the bin by
+    # more than the threshold, no need to search for a new home.
+    return False
 
 
 def compare_new_bin_taxonomies(contigTaxon, bin_dic, threshold):
@@ -75,16 +100,15 @@ def compare_new_bin_taxonomies(contigTaxon, bin_dic, threshold):
     on bit-scores. Return value is a list containing:
     contig repatriation score, bin confidence, and bin
     '''
-    contigTax = contigTaxon.split(',')
     test_container = [0.0, 0.0, 'NoTaxon', 'NoTaxon']
     for binID in sorted(list(bin_dic.keys())):
         # Init counting variables
         bin_confidence = 0
         matches = 0.0
         score = 0.0
-        binTax = bin_dic[binID].split(',')
+        binTax = bin_dic[binID]
         # Loop through taxonomies
-        for cval, bval in zip(contigTax, binTax):
+        for cval, bval in zip(contigTaxon, binTax):
             curcon = cval.split(':')
             curbin = bval.split(':')
             if curbin[0] == 'NoTaxon':
@@ -101,20 +125,21 @@ def compare_new_bin_taxonomies(contigTaxon, bin_dic, threshold):
                 if curcon[0] == curbin[0]:
                     # Each level
                     matches += 1.0
-                    score += (bitscore * float(matches))
-                    bin_confidence += (bitscore * float(matches))
+                    bin_confidence = (bitscore * float(matches))
+                    score += (bitscore * float(matches))  # First round, max score ==  1
+                                                          # Second round, max == (1 + 2)
+                                                          # Third round, max = (1 + 2 + 3)
                 else:  # Below, test if discrepancy too big to repair
                     # If both annotations are high level and don't match, then don't
                     # resolve this contig and make score = 0 so they don't collapse.
                     if (bitscore > threshold and bin_bitscore > threshold):
                         score = 0
-                        break
                     # Otherwise, keep score where it is and potentially we can
                     # add this information
                     else:
                         pass
         # Test to see if we have a potential re-patriation candidate
-        if score > 10.0:  # This accounts for first 4 levels of taxonomy
+        if score > 15.0:  # This accounts for first 4 levels of taxonomy
             if score > test_container[0]:
                 test_container[0] = score
                 test_container[1] = bin_confidence
@@ -133,51 +158,57 @@ def compare_new_bin_taxonomies(contigTaxon, bin_dic, threshold):
     return test_container
 
 
-def loop_contig_taxonomies(binCategoricalFile, contigFile, removeThresh, addThresh, readme, output):
+def loop_contig_taxonomies(binTaxonFile, contigTaxonFile, binidfile,
+                           removeThresh, addThresh, readme, output):
     '''
     Fx that loops through standardized contig database file and re-assigns,
     removes, and adds contigs to bins based on CAT/BAT taxonomy annotations
     with bit-scores.
     '''
-    bin_dic = read_bin_taxonomies(binCategoricalFile)
-    count = 0
+    addThresh = float(addThresh)
+    bin_tax = read_taxonomy(binTaxonFile, bins=True)
+    contig_tax = read_taxonomy(contigTaxonFile)
+    bin_ident = read_bin_identifier(binidfile)
+    remove_count = 0
+    add_count = 0
     with open(readme, 'w') as o:
         with open(output, 'w') as out:
-            with open(contigFile) as i:
-                line = i.readline()  # Skip header
-                out.write(line)
-                line = i.readline()
-                while line:
-                    try:
-                        line = line.split('\t')
-                        contig = line[0]
-                        mybin = line[70]
-                        contaxon = line[71]
-                        bintaxon = line[73]
-                        if (contaxon == 'NoTaxon' or contaxon == ''):
-                            out.write('\t'.join(line))
-                        else:
-                            remove = compare_taxonomies(
-                                contaxon, bintaxon, removeThresh)
-                            if remove:
-                                count += 1
-                                new = compare_new_bin_taxonomies(
-                                    contaxon, bin_dic, addThresh)
-                                writeline = f"Contig: {contig}\nOriginal Bin: {mybin}\nContig Taxonomy:\n\t{contaxon}\nOriginal Bin Taxonomy:\n\t{bintaxon}\nNew Bin: {new[2]}\nNew Bin score: {new[0]}\nNew Bin Taxonomy:\n\t{new[3]}\n\n"
-                                line[70] = new[2]
-                                if line[73] == 'NoTaxon':
-                                    pass
-                                else:
-                                    line[73] = ','.join(new[3])
-                                o.write(writeline)
-                            else:
-                                pass
-                            out.write('\t'.join(line))
-                    except IndexError:
-                        pass
-                    line = i.readline()
-    print(count)
-    return count
+            # Step 1: Loop through all contig: taxonomy pairs
+            for contig in contig_tax.keys():
+                # Assign a variable for the contig's taxonomy
+                contaxon = contig_tax[contig]
+                try:
+                    # Get values for contig's bin and associated bin taxonomy
+                    mybin = bin_ident[contig]
+                    # Get taxon for bin based on bin_tax dict
+                    current_bintaxon = bin_tax[mybin]
+                except KeyError:
+                    mybin = "NoBin"
+                    current_bintaxon = False
+                # If the contig is in a bin, compare with the bin it's been placed in
+                if current_bintaxon:
+                    # Below, return T or F, depending on if contig diverges from bin
+                    remove = compare_taxonomies(
+                        contaxon, current_bintaxon, removeThresh)
+                    if remove is True:
+                        remove_count += 1
+                    # If contig does not diverge, write it as it was
+                    else:
+                        out.write(f"{mybin}\t{contig}\n")
+                else:  # Otherwise, don't compare
+                    remove = True  # Want to search for a home
+                if remove:
+                    new = compare_new_bin_taxonomies(
+                        contaxon, bin_tax, addThresh)
+                    if new[0] != 0:
+                        add_count += 1
+                        writeline = f"Contig: {contig}\nOriginal Bin: {mybin}\nContig Taxonomy:\n\t{contaxon}\nOriginal Bin Taxonomy:\n\t{current_bintaxon}\nNew Bin: {new[2]}\nNew Bin score: {new[0]}\nNew Bin Taxonomy:\n\t{new[3]}\n\n"
+                        o.write(writeline)
+                        out.write(f"{new[2]}\t{contig}\n")
+                else:
+                    pass
+    print(f"Removed: {remove_count}\nAdded: {add_count}\n")
+    return remove_count
 
 
 if __name__ == '__main__':
@@ -188,9 +219,12 @@ if __name__ == '__main__':
     ''' Init arguments '''
     parser = argparse.ArgumentParser(description='Parser')
     parser.add_argument('-b', '--BinFile',
-                        help='Categorical bin file', required=True)
+                        help='BAT file from CATBAT', required=True)
     parser.add_argument('-c', '--ContigFile',
-                        help='Master database file created from annotationFormmatting.py',
+                        help='CAT file from CATBAT',
+                        required=True)
+    parser.add_argument('-i', '--BinID',
+                        help='Bin identification file',
                         required=True)
     parser.add_argument('-m', '--RemoveThreshold',
                         help='Threshold to remove already binned contigs',
@@ -200,10 +234,10 @@ if __name__ == '__main__':
                         required=True)
     parser.add_argument('-r', '--Readme',
                         help='README file to keep track of steps',
-                        required=False, default=f'README-{date}.txt')
-    parser.add_argument('o', '--Output', required=True,
+                        required=False, default=f'README.txt')
+    parser.add_argument('-o', '--Output', required=True,
                         help='Output file name')
     arg = parser.parse_args()
-    loop_contig_taxonomies(arg.BinFile, arg.ContigFile,
+    loop_contig_taxonomies(arg.BinFile, arg.ContigFile, arg.BinID,
                            arg.RemoveThreshold, arg.AddThreshold,
                            arg.Readme, arg.Output)
