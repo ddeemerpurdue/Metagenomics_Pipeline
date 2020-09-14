@@ -1,6 +1,8 @@
 '''
+Author: Dane
 Program designed to take in the raw input from the fastANI snakemake
-pipeline and standardize it with bin information from RefineM output.
+pipeline and standardize it with bin information from RefineM output
+(or whatever the most up-to-date output is from).
 Input requires a tab-delimited list of the binfiles as well.
 Example useage:
 $ python add_bins.py -a ani.txt -o out.txt -b bin1.txt bin2.txt
