@@ -17,6 +17,6 @@ out_list = str(snakemake.output.outputs)
 out_list = out_list.split()
 
 for i, o in zip(in_list, out_list):
-    write_fasta(i, param, o)
+    filter_fasta(i, param, o)
 
 print('Done!')
