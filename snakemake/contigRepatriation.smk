@@ -25,6 +25,7 @@ rule all:
                                                        t=config["threshold"],
                                                        m=config["matches"])
 
+# Add bin information to raw ANI output from fastANI snakemake.
 rule append_bins:
     input:
         ani="{ani_filename}.txt"
@@ -33,6 +34,8 @@ rule append_bins:
     shell:
         "python scripts/appendBinsToANI.py -a {input.ani} -b *.bins.txt -o {output.outfile}"
 
+# Analyze contigs for repatriation and output a file in the format:
+# f"query\treference\tcontig\tbin_to_match\tMATCH\n"
 rule write_repatrated_contigs:
     input:
         ani="Master.{ani_filename}.txt"
@@ -44,6 +47,8 @@ rule write_repatrated_contigs:
     shell:
         "python scripts/aniContigRecycler.py -a {input.ani} -t {params.threshold} -m {params.matches} -o {output.outfile}"
 
+# No need to write FASTA files and above script writes a new bin ID file
+'''
 rule write_new_fasta_files:
     input:
         repat="Repat.{ani_filename}.T{t}.M{m}.txt",
@@ -57,3 +62,4 @@ rule write_new_fasta_files:
         mkdir {output.repatdir}
         python scripts/recycledBinFastaWriter.py -r {input.repat} -s {input.assembly} -q {params.samplename} -d {output.repatdir}
         """
+'''
