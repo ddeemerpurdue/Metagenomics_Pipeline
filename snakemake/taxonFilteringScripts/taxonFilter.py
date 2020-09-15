@@ -1,14 +1,18 @@
 '''
 Author: Dane
-Remove contamination from a metagenomic analysis by
-comparing bit-scores across contig annotations vs.
-full bin annotations. Scores are obtained from CATBAT.
+Remove contamination from a metagenomic analysis by comparing bit-scores across contig
+annotations vs. full bin annotations. Scores are obtained from CATBAT.
 Requirements:
-*.Bin2C.names.txt [Default CATBAT output ran on bins]
-*.C2C.names.txt [Default CATBAT output ran on contigs]
+*.Bin2C.names.txt [Default CATBAT output]
+
+Two threshold levels can be tuned to change confidence in taxonomy filtering:
+--RemoveThreshold is the bit score required between the divergent contig annotation
+and the overall bin annotation.
+--AddThreshold is the bit score required between a non-binned contig and a potential
+bin in order for the contig to join that bin.
 
 Example usage:
-$ python taxonFilter.py -b sample.Bin2C.names.txt -c sample.C2C.names.txt -m 0.70
+$ python taxonFilter.py -b binFile.txt -c masterDB.txt -m 0.70
 -a 0.50 -o outputFile.txt
 '''
 
@@ -126,9 +130,10 @@ def compare_new_bin_taxonomies(contigTaxon, bin_dic, threshold):
                     # Each level
                     matches += 1.0
                     bin_confidence = (bitscore * float(matches))
-                    score += (bitscore * float(matches))  # First round, max score ==  1
-                                                          # Second round, max == (1 + 2)
-                                                          # Third round, max = (1 + 2 + 3)
+                    # First round, max score ==  1
+                    score += (bitscore * float(matches))
+                    # Second round, max == (1 + 2)
+                    # Third round, max = (1 + 2 + 3)
                 else:  # Below, test if discrepancy too big to repair
                     # If both annotations are high level and don't match, then don't
                     # resolve this contig and make score = 0 so they don't collapse.
@@ -139,7 +144,7 @@ def compare_new_bin_taxonomies(contigTaxon, bin_dic, threshold):
                     else:
                         pass
         # Test to see if we have a potential re-patriation candidate
-        if score > 15.0:  # This accounts for first 4 levels of taxonomy
+        if score > 28.0:  # This accounts for first 7 levels of taxonomy
             if score > test_container[0]:
                 test_container[0] = score
                 test_container[1] = bin_confidence
@@ -165,6 +170,7 @@ def loop_contig_taxonomies(binTaxonFile, contigTaxonFile, binidfile,
     removes, and adds contigs to bins based on CAT/BAT taxonomy annotations
     with bit-scores.
     '''
+    contigs_moved = {}
     addThresh = float(addThresh)
     bin_tax = read_taxonomy(binTaxonFile, bins=True)
     contig_tax = read_taxonomy(contigTaxonFile)
@@ -172,42 +178,51 @@ def loop_contig_taxonomies(binTaxonFile, contigTaxonFile, binidfile,
     remove_count = 0
     add_count = 0
     with open(readme, 'w') as o:
-        with open(output, 'w') as out:
-            # Step 1: Loop through all contig: taxonomy pairs
-            for contig in contig_tax.keys():
-                # Assign a variable for the contig's taxonomy
-                contaxon = contig_tax[contig]
-                try:
-                    # Get values for contig's bin and associated bin taxonomy
-                    mybin = bin_ident[contig]
-                    # Get taxon for bin based on bin_tax dict
-                    current_bintaxon = bin_tax[mybin]
-                except KeyError:
-                    mybin = "NoBin"
-                    current_bintaxon = False
-                # If the contig is in a bin, compare with the bin it's been placed in
-                if current_bintaxon:
-                    # Below, return T or F, depending on if contig diverges from bin
-                    remove = compare_taxonomies(
-                        contaxon, current_bintaxon, removeThresh)
-                    if remove is True:
-                        remove_count += 1
-                    # If contig does not diverge, write it as it was
-                    else:
-                        out.write(f"{mybin}\t{contig}\n")
-                else:  # Otherwise, don't compare
-                    remove = True  # Want to search for a home
-                if remove:
-                    new = compare_new_bin_taxonomies(
-                        contaxon, bin_tax, addThresh)
-                    if new[0] != 0:
-                        add_count += 1
-                        writeline = f"Contig: {contig}\nOriginal Bin: {mybin}\nContig Taxonomy:\n\t{contaxon}\nOriginal Bin Taxonomy:\n\t{current_bintaxon}\nNew Bin: {new[2]}\nNew Bin score: {new[0]}\nNew Bin Taxonomy:\n\t{new[3]}\n\n"
-                        o.write(writeline)
-                        out.write(f"{new[2]}\t{contig}\n")
+        # Step 1: Loop through all contig: taxonomy pairs
+        for contig in contig_tax.keys():
+            # Assign a variable for the contig's taxonomy
+            contaxon = contig_tax[contig]
+            try:
+                # Get values for contig's bin and associated bin taxonomy
+                mybin = bin_ident[contig]
+                # Get taxon for bin based on bin_tax dict
+                current_bintaxon = bin_tax[mybin]
+            except KeyError:
+                mybin = "NoBin"
+                current_bintaxon = False
+            # If the contig is in a bin, compare with the bin it's been placed in
+            if current_bintaxon:
+                # Below, return T or F, depending on if contig diverges from bin
+                remove = compare_taxonomies(
+                    contaxon, current_bintaxon, removeThresh)
+                if remove is True:
+                    remove_count += 1
+                # If contig does not diverge, write it as it was
                 else:
-                    pass
+                    contigs_moved[contig] = mybin
+            else:  # Otherwise, don't compare
+                remove = True  # Want to search for a home
+            if remove:
+                new = compare_new_bin_taxonomies(
+                    contaxon, bin_tax, addThresh)
+                if new[0] != 0:
+                    add_count += 1
+                    writeline = f"Contig: {contig}\nOriginal Bin: {mybin}\nContig Taxonomy:\n\t{contaxon}\nOriginal Bin Taxonomy:\n\t{current_bintaxon}\nNew Bin: {new[2]}\nNew Bin score: {new[0]}\nNew Bin Taxonomy:\n\t{new[3]}\n\n"
+                    o.write(writeline)
+                    contigs_moved[contig] = new[2]
+            else:
+                pass
     print(f"Removed: {remove_count}\nAdded: {add_count}\n")
+    # Finally, write a master binID file:
+    with open(output, 'w') as out:
+        for contig in contigs_moved.keys():
+            out.write(f"{contigs_moved[contig]}\t{contig}\n")
+        for contig in bin_ident.keys():
+            if contig in contigs_moved:
+                pass
+            else:
+                out.write(f"{bin_ident[contig]}\t{contig}\n")
+
     return remove_count
 
 
