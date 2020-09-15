@@ -229,7 +229,7 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
     log_output = f"FinalBlastNResults.T{str(threshold).split('.')[1]}.log"
     with open(output, 'w') as o:
         for key, value in final_blast_dic.items():
-            if key == 'NoTaxon':
+            if value == 'NoTaxon':
                 pass
             else:
                 writeline = value[0] + '\t' + key + '\n'
