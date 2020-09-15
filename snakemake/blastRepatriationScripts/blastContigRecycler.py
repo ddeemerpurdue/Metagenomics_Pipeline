@@ -87,7 +87,8 @@ def write_blastn_nobinners(blast_file, nb_blast_file, threshold):
     print(f"Threshold: {threshold}")
 
     ''' String name formatting '''
-    binID_file, binLog_file, bin_num = format_name(nb_blast_file, threshold)
+    binID_file, binLog_file, bin_num = format_name(
+        nb_blast_file, str(threshold).split('.')[1])
     ''' String name formatting '''
 
     # If the mean assembly value does not pass the threshold, log and return
@@ -146,7 +147,7 @@ def read_blastn_nobinners(blast_file, nb_blast_file, threshold):
     # Initialize threshold to compare non-binners to
     mean_bin_value, total_length = read_bastn_reference(blast_file)
     minimal_match = mean_bin_value - (mean_bin_value * 0.05)
-    threshold = float(threshold)
+    threshold = float(threshold) / 100
 
     ''' String name formatting '''
     binID_file, binLog_file, bin_num = format_name(nb_blast_file, threshold)
@@ -197,14 +198,17 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
     hit bin
     '''
     master_log = []
-    threshold = float(threshold)
+    threshold = float(threshold) / 100
     final_blast_dic = {}
     blast_files = sorted(blast_files)
     nb_blast_files = sorted(nb_blast_files)
     # Loop through all files
     for blast_file, nb_blast_file in zip(blast_files, nb_blast_files):
+        print(
+            f"BF: {str(os.path.basename(blast_file))}\nNBF: {str(os.path.basename(nb_blast_file))}")
         # Make sure both files are the same
-        assert os.path.basename(blast_file) == os.path.basename(nb_blast_file)
+        assert str(os.path.basename(blast_file)) == str(
+            os.path.basename(nb_blast_file))
         current_dic, current_log = read_blastn_nobinners(
             blast_file, nb_blast_file, threshold)
         master_log.extend(current_log)  # Add log information to list
@@ -221,12 +225,15 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
                 final_blast_dic[contig] = current_dic[contig]
 
     # Now write the results to an output file:
-    output = "FinalBlastNResults.txt"
-    log_output = "FinalBlastNResults.log"
+    output = f"FinalBlastNResults.T{str(threshold).split('.')[1]}.txt"
+    log_output = f"FinalBlastNResults.T{str(threshold).split('.')[1]}.log"
     with open(output, 'w') as o:
         for key, value in final_blast_dic.items():
-            writeline = value[0] + '\t' + key + '\n'
-            o.write(writeline)
+            if key == 'NoTaxon':
+                pass
+            else:
+                writeline = value[0] + '\t' + key + '\n'
+                o.write(writeline)
     with open(log_output, 'w') as log:
         for line in master_log:
             writeline = '\t'.join([str(val) for val in line])
@@ -243,7 +250,7 @@ if __name__ == '__main__':
     parser.add_argument("-n", "--NonBinnerBlastFile", help="Blast file for non-binners",
                         required=True, nargs='*')
     parser.add_argument("-t", "--Threshold", help="Percent identity threshold.\
-                        Default = 0.80", required=False, default=0.80)
+                        Default = 80", required=False, default=80)
     argument = parser.parse_args()
     ''' ARGUMENTS '''
     if len(argument.Blastfile) == 1:
