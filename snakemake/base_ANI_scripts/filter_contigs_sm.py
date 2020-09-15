@@ -4,7 +4,7 @@ Snakemake specific script that makes a call to filter_fast.py to filter
 assemblies to only contain contigs >= {params.length}
 '''
 # Step 1
-from filter_fast import *
+from filterSeqLength import *
 
 # Initialize input parameters from snakemake into a list
 # Input is list of all the split files
