@@ -39,6 +39,7 @@ def read_bastn_reference(blast_file):
     contigs.
     '''
     similarities = []
+    total_length = 0
     with open(blast_file) as i:
         line = i.readline().split('\t')
         assert len(line) == 12, "Not a blastn format 6 file"
@@ -46,7 +47,8 @@ def read_bastn_reference(blast_file):
             try:
                 contig_length = float(line[0].split('_')[3])
                 pident = float(line[2])
-                length = float(line[3])
+                length = int(line[3])
+                total_length += length
                 similarity = calc_similarity(contig_length,
                                              pident, length)
                 similarities.append(similarity)
@@ -55,7 +57,7 @@ def read_bastn_reference(blast_file):
             line = i.readline().split()
         # Return the mean similarity value
         mean = sum(similarities) / len(similarities)
-        return mean
+        return mean, total_length
 
 
 def format_name(nb_blast_file, threshold):
@@ -76,9 +78,11 @@ def write_blastn_nobinners(blast_file, nb_blast_file, threshold):
     endings will be .txt or .log. This may change in the future!
     '''
     # Initialize threshold to compare non-binners to
-    mean_bin_value = read_bastn_reference(blast_file)
+    mean_bin_value, total_length = read_bastn_reference(blast_file)
     minimal_match = mean_bin_value - (mean_bin_value * 0.05)
+    minimal_match_length = 10000
     print(f"Minimal match: {minimal_match}")
+    print(f"Total alignment length: {total_length}")
     threshold = float(threshold)
     print(f"Threshold: {threshold}")
 
@@ -87,7 +91,7 @@ def write_blastn_nobinners(blast_file, nb_blast_file, threshold):
     ''' String name formatting '''
 
     # If the mean assembly value does not pass the threshold, log and return
-    if minimal_match < threshold:
+    if (minimal_match < threshold or total_length < minimal_match_length):
         print('Bin does not match assembly above the listed threshold.')
         with open(binLog_file, 'a') as log:
             writeline = f"Minimal match of {minimal_match} is less than {threshold}\n"
@@ -140,7 +144,7 @@ def read_blastn_nobinners(blast_file, nb_blast_file, threshold):
         print(f"File - {blast_file} -  is empty!")
         return {}, []
     # Initialize threshold to compare non-binners to
-    mean_bin_value = read_bastn_reference(blast_file)
+    mean_bin_value, total_length = read_bastn_reference(blast_file)
     minimal_match = mean_bin_value - (mean_bin_value * 0.05)
     threshold = float(threshold)
 
