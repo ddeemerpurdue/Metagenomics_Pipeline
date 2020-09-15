@@ -12,8 +12,8 @@ and the overall bin annotation.
 bin in order for the contig to join that bin.
 
 Example usage:
-$ python taxonFilter.py -b binFile.txt -c masterDB.txt -m 0.70
--a 0.50 -o outputFile.txt
+$ python taxonFilter.py -i binFile.txt -c {sample}.C2C.names.txt -b {sample}.Bin2C.names.txt
+-m 0.70 -a 0.50 -o outputFile.txt
 '''
 
 
@@ -233,9 +233,9 @@ if __name__ == '__main__':
     import argparse
     ''' Init arguments '''
     parser = argparse.ArgumentParser(description='Parser')
-    parser.add_argument('-b', '--BinFile',
+    parser.add_argument('-b', '--Bat',
                         help='BAT file from CATBAT', required=True)
-    parser.add_argument('-c', '--ContigFile',
+    parser.add_argument('-c', '--Cat',
                         help='CAT file from CATBAT',
                         required=True)
     parser.add_argument('-i', '--BinID',
@@ -253,6 +253,6 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--Output', required=True,
                         help='Output file name')
     arg = parser.parse_args()
-    loop_contig_taxonomies(arg.BinFile, arg.ContigFile, arg.BinID,
+    loop_contig_taxonomies(arg.Bat, arg.Cat, arg.BinID,
                            arg.RemoveThreshold, arg.AddThreshold,
                            arg.Readme, arg.Output)
