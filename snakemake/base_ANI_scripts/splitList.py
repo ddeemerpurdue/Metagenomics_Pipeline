@@ -13,15 +13,18 @@ import sys
 # Initialize input parameters from snakemake into a list
 in_list = str(snakemake.input.lists)
 out_list = str(snakemake.output)
+out_directory = str(snakemake.params.directory)
+split_size = int(snakemake.params.split_size)
 # Put the input inside of a list
 in_list = in_list.split()
 out_list = out_list.split()
 
 
-# Step 1: Split each file into 10 smaller files
+# Step 1: Split each file into N smaller files
 for file in in_list:
-    prefix = file.rsplit('.',1)[0] + str('_')
-    cmd = f"split -l$((`wc -l < {file}`/9)) {file} {prefix}"
+    prefix = out_directory + '/' + os.path.basename(file).split('.AllContigsList.txt')[0] + str('_')
+    cmd = f"split -l$((`wc -l < {file}`/ {split_size})) {file} {prefix}"
 #    cmd = f"split -n 10 {file} {prefix}"
+    print(f"Splitting {file} into {split_size} equal chunks.")
     os.system(cmd)
 
