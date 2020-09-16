@@ -70,12 +70,12 @@ def append_bins_to_ani(binfile, anifile, output):
             while constant_line:
                 line = constant_line.split('\t')
                 # Below, grab sample name out of first 2 fields in raw ANI output
-                quer = line[0].split('/')[1].split('_')[0]
-                refer = line[1].split('/')[1].split('_')[0]
+                quer = line[0].split('/')[1].split('_')[5]  # With pipeline, is 5th entry
+                refer = line[1].split('/')[1].split('_')[5]
                 # Do not need ANI results within samples (e.g., R1 vs. R1)
                 if quer != refer:
-                    quer_node = line[0].split('/')[2].rsplit('.', 1)[0]
-                    reference_node = line[1].split('/')[2].rsplit('.', 1)[0]
+                    quer_node = line[0].split('/')[6].rsplit('.', 1)[0]
+                    reference_node = line[1].split('/')[6].rsplit('.', 1)[0]
                     ani = line[2]
                     orths = line[3]
                     total = line[4].strip()
