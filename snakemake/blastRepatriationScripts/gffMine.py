@@ -1,4 +1,6 @@
-''' Program that takes in a gff (version 3) file and parses out information
+'''
+Author: Dane
+Program that takes in a gff (version 3) file and parses out information
 of interest
 Three main uses:
 1. List all attribute information that a gff (3) file contains:
