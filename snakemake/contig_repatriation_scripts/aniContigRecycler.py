@@ -12,7 +12,7 @@ Example usage:
 $ python aniContigRecycler.py -a ANIFILE.txt -t 90 -m 200 -o output90T200M.txt
 """
 import pandas as pd
-import argparse
+import os
 
 
 def get_cois(file, threshold):
@@ -186,22 +186,28 @@ def map_unbinned_contigs(file, threshold, matches):
     return lines
 
 
-def write_recycled_bins(file, threshold, matches, output):
+def write_recycled_bins(file, threshold, matches, output, bin_directory):
     a = map_unbinned_contigs(file, threshold, matches)
     with open(output, 'w') as o:
         for line in a:
             o.write(line)
             # Now write a new bin identification file for each sample
             sample = line.split('\t')[0]
-            contig = line.split('\t')[2]
-            bin_num = line.split('\t')[4].strip()
-            bin_file = f"{sample}.RepatANI.txt"
-            with open(bin_file, 'a') as bin_out:
-                bin_out.write(f"{bin_num}\t{contig}\n")
+            if sample == 'query':  # Don't write a file for the header!
+                pass
+            else:
+                contig = line.split('\t')[2]
+                bin_num = line.split('\t')[4].strip()
+                bin_file = f"{sample}.{os.path.basename(str(file)).split('.')[1]}.ANIRepatT{threshold}M{matches}.txt"
+                
+                full_bin_file = os.path.join(bin_directory, bin_file)
+                with open(full_bin_file, 'a') as bin_out:
+                    bin_out.write(f"{bin_num}\t{contig}\n")
     return None
 
 
 if __name__ == "__main__":
+    import argparse
     """ Arguments """
     parser = argparse.ArgumentParser(description="Parser")
     parser.add_argument("-a", "--ANI", help="ANI master file", required=True)
@@ -209,6 +215,8 @@ if __name__ == "__main__":
     matches", default=90)
     parser.add_argument("-m", "--Matches", help="How many binning contigs must\
     match the reference bin", default=10, required=False)
+    parser.add_argument("-d", "--BinIdentDirectory", help="Directory for binID files",
+                        required=False, default=".")
     parser.add_argument("-o", "--Output", help="Output file to write to",
                         required=False)
     parser.add_argument("-w", "--Write", help="If provided, write files for \
@@ -219,4 +227,5 @@ if __name__ == "__main__":
         write_cois(argument.ANI, argument.Threshold)
     else:
         write_recycled_bins(argument.ANI, argument.Threshold,
-                            argument.Matches,argument.Output)
+                            argument.Matches,argument.Output,
+                           argument.BinIdentDirectory)
