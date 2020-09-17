@@ -65,6 +65,8 @@ def get_bin_dictionary(binfile):
             line = line.split('\t')
             binid = line[0]
             contig = line[1].strip('>')
+            if contig.startswith('super'):
+                contig = contig.split('super_max_')[1]
             bindict[contig] = binid
             line = f.readline().strip()
     return bindict
