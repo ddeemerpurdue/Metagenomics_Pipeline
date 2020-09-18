@@ -198,7 +198,9 @@ def write_recycled_bins(file, threshold, matches, output, bin_directory):
             else:
                 contig = line.split('\t')[2]
                 bin_num = line.split('\t')[4].strip()
-                bin_file = f"{sample}.{os.path.basename(str(file)).split('.')[1]}.ANIRepatT{threshold}M{matches}.txt"
+                processing = os.path.basename(str(file)).split('.')[1]
+                length = os.path.basename(str(file)).split('.')[4]
+                bin_file = f"{sample}.{length}.{processing}.ANIRepatT{threshold}M{matches}.txt"
                 
                 full_bin_file = os.path.join(bin_directory, bin_file)
                 with open(full_bin_file, 'a') as bin_out:
