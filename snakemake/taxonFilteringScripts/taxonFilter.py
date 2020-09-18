@@ -13,7 +13,7 @@ bin in order for the contig to join that bin.
 
 Example usage:
 $ python taxonFilter.py -i binFile.txt -c {sample}.C2C.names.txt -b {sample}.Bin2C.names.txt
--m 0.70 -a 0.50 -o outputFile.txt
+-m 70 -a 50 -o outputFile.txt
 '''
 
 
@@ -171,7 +171,8 @@ def loop_contig_taxonomies(binTaxonFile, contigTaxonFile, binidfile,
     with bit-scores.
     '''
     contigs_moved = {}
-    addThresh = float(addThresh)
+    addThresh = float(addThresh) / 100
+    removeThresh = float(removeThresh) / 100
     bin_tax = read_taxonomy(binTaxonFile, bins=True)
     contig_tax = read_taxonomy(contigTaxonFile)
     bin_ident = read_bin_identifier(binidfile)
