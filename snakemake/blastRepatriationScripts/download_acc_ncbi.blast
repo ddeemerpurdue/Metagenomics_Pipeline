@@ -36,3 +36,5 @@ for i in "${!ACCS[@]}"; do
 		echo "$BIN"
 		echo "$ACC"
 done
+
+touch $2/NCBI_Assembly_Download.tkn
