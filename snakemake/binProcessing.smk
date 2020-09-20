@@ -13,17 +13,10 @@ Starting input requires:
 '''
 
 configfile: "../config/config.yaml"
-
-# Rule orders
-ruleorder: filter_taxonomy > concat_ani_bin_ident
-
-# Local variables - Note: Increase fx'ality of below
-all_processing = ['OriginalBinID']
+all_processing = []
 for one in config['TaxonAddThresh']:
     for two in config['TaxonAddThresh']:
         all_processing.append(f'TaxonRemovedA{one}R{two}')
-
-
 
 rule all:
     input:
@@ -39,17 +32,22 @@ rule all:
             query=config['samples'],
             reference=config['samples'],
             split=config['ANIAssemblySplits']
-        ),
+            ),
         all_ani = expand(
             "FastANI/Filtered_{length}/AllRawOriginalFastANIResults.{length}.txt",
-            length=config['ANIAssemblyFilterSize'])
+            length=config['ANIAssemblyFilterSize']),
+        append_bins = expand(
+            "FastANI/Filtered_{length}/AllProcessed.{processing}.FastANIResults.{length}.txt",
+            length=config['ANIAssemblyFilterSize'],
+            processing=all_processing
+        ),
         final_ani = expand(
-            "BinIdentification/{sample}.Full.{length}.{processing}.ANIRepatA{add}R{remove}.txt",
+            "BinIdentification/{sample}.Full.{length}.{processing}.ANIRepatT{thresh}M{match}.txt",
             sample=config['samples'],
             length=config['ANIAssemblyFilterSize'],
-            processing=config['all_processing'],
-            add=config['TaxonAddThresh'],
-            remove=config['TaxonRemoveThresh']
+            processing=all_processing,
+            thresh=config['ANIRepatIdentThreshold'],
+            match=config['ANIRepatCountThreshold']
             )
 
 
@@ -77,11 +75,11 @@ rule filter_taxonomy:
         cat = "../input/Cat/{sample}/{sample}.C2C.names.txt",
         bat = "../input/Bat/{sample}/{sample}.Bin2C.names.txt"
     params:
-        addThresh = config['TaxonAddThresh'],
-        removeThresh = config['TaxonRemoveThresh']
+        addThresh = "{add}",
+        removeThresh = "{remove}"
     wildcard_constraints:
-        add = "\d+",
-        remove = "\d+"
+        add="\d+",
+        remove="\d+"
     output:
         new_bin_id = "BinIdentification/{sample}.TaxonRemovedA{add}R{remove}.txt"
     log:
@@ -101,7 +99,7 @@ rule filter_contigs:
     input:
         assembly = "../input/Assembly/{sample}.Assembly500.fasta"
     params:
-        length = {length}
+        length = "{length}"
     log:
         "logs/ANI/filtering{sample}Assembly{length}.log"
     output:
@@ -114,19 +112,22 @@ rule split_filtered_contigs:
     input:
         assembly = "../input/Assembly/Filtered/{sample}.Assembly{length}.fasta"
     params:
-        folder = "../input/Assembly/Filtered/Split-Files/{sample}"
+        folder = "../input/Assembly/Filtered/Split-Files-{length}/{sample}"
     output:
-        outputs = "../input/Assembly/Filtered/Split-Files/{sample}/{sample}.{length}.complete.tkn"
+        outputs = "../input/Assembly/Filtered/Split-Files-{length}/{sample}/{sample}.{length}.complete.tkn"
     shell:
-        "scripts/split_mfa.sh {input.assembly} {params.folder}"
+        """
+        scripts/split_mfa.sh {input.assembly} {params.folder}
+        touch ../input/Assembly/Filtered/Split-Files-{wildcards.length}/{wildcards.sample}/{wildcards.sample}.{wildcards.length}.complete.tkn
+        """
 
 # From the list of contigs from split_filtered_contigs,
 # create a list specifying their path.
 rule make_contig_list:
     input:
-        samples = "../input/Assembly/Filtered/Split-Files/{sample}/{sample}.{length}.complete.tkn"
+        samples = "../input/Assembly/Filtered/Split-Files-{length}/{sample}/{sample}.{length}.complete.tkn"
     output:
-        outputs = "../input/Assembly/Filtered/Split-Files/{sample}.{length}.AllContigsList.txt"
+        outputs = "../input/Assembly/Filtered/Split-Files-{length}/{sample}.{length}.AllContigsList.txt"
     script:
         "scripts/makelist.py"
 
@@ -134,12 +135,12 @@ rule make_contig_list:
 # Split the list files into N smaller files specified by config['ANIAssemblySplitSize']
 rule split_lists:
     input:
-        lists = "../input/Assembly/Filtered/Split-Files/{sample}.{length}.AllContigsList.txt"
+        lists = "../input/Assembly/Filtered/Split-Files-{length}/{sample}.{length}.AllContigsList.txt"
     params:
         split_size = config['ANIAssemblySplitSize'],
-        directory = "../input/Assembly/Filtered/Split-Files"
+        directory = "../input/Assembly/Filtered/Split-Files-{length}"
     output:
-        outputs = "../input/Assembly/Filtered/Split-Files/{sample}.{length}_{split}"
+        outputs = "../input/Assembly/Filtered/Split-Files-{length}/{sample}.{length}_{split}"
     script:
         "scripts/splitList.py"
 
@@ -147,8 +148,8 @@ rule split_lists:
 # Run the fastANI program now! using full lists as query and split lists as points to actual files
 rule run_fastani:
     input:
-        full_lists = "../input/Assembly/Filtered/Split-Files/{query}.{length}.AllContigsList.txt",
-        split_lists = "../input/Assembly/Filtered/Split-Files/{reference}.{length}_{split}"
+        full_lists = "../input/Assembly/Filtered/Split-Files-{length}/{query}.{length}.AllContigsList.txt",
+        split_lists = "../input/Assembly/Filtered/Split-Files-{length}/{reference}.{length}_{split}"
     params:
         minfrac = config['FastANIMinFraction'],
         fraglen = config['FastANIFragLength']
@@ -171,7 +172,7 @@ rule concatenate_output:
     output:
         outputs = "FastANI/Filtered_{length}/AllRawOriginalFastANIResults.{length}.txt"
     wildcard_constraints:
-        length = "\d+"
+        length="\d+"
     shell:
         """
         cat {input.files} > {output.outputs}
@@ -191,8 +192,9 @@ rule append_bins_to_ani:
         new_ani = "FastANI/Filtered_{length}/AllProcessed.{processing}.FastANIResults.{length}.txt"
     shell:
         """
-        python scripts/appendBinsToANI.py -a {input.ani_file} -b {input.bin_id} -o {oputput.new_ani}
+        python scripts/appendBinsToANI.py -a {input.ani_file} -b {input.bin_id} -o {output.new_ani}
         """
+
 
 # Run aniContigRecycler.py on the results and output
 rule ani_based_contig_repatriation:
@@ -217,22 +219,11 @@ rule concat_ani_bin_ident:
         bins_to_add_to = "BinIdentification/{sample}.{processing}.txt",
         ani_bins = "BinIdentification/{sample}.{length}.{processing}.ANIRepat{params}.txt"
     output:
-        new_bins = "BinIdentification/{sample}.{length}.{processing}.ANIRepat{params}.Full.txt"
+        new_bins = "BinIdentification/{sample}.Full.{length}.{processing}.ANIRepat{params}.txt"
     shell:
         """
         cat {input.bins_to_add_to} {input.ani_bins} > {output.new_bins}
         """
-
-
-
-
-
-
-
-
-
-
-
 
 
 ### ~~~~~ blastn REPATRIATION portion of the processing pipeline ~~~~~ ###
@@ -241,15 +232,16 @@ rule concat_ani_bin_ident:
 # Find the top genomedb_acc feature per contig
 rule grab_contig_top_genomedb_acc:
     input:
-        gff = "../input/GFF/{sample}/{sample}.All.gff"
+        gff = "../input/GFF/{sample}/{sample}.All.gff",
+        bin_id = "BinIdentification/{sample}.{processing}.txt"
     params:
         attribute = "genomedb_acc",
-        bin_id = "BinIdentification/{sample}.{processing}.Full.txt"
+#        bin_id = "BinIdentification/{sample}.{processing}.Full.txt"
     output:
         out_file = "GFFAnnotation/{sample}/{sample}.{processing}.TopContigGenomeDBAcc.txt"
     shell:
         """
-        python scripts/gffMine.py -g {input.gff} -a {params.attribute} -b {params.bin_id} -o {output.out_file} --Top
+        python scripts/gffMine.py -g {input.gff} -a {params.attribute} -b {input.bin_id} -o {output.out_file} --Top
         """
 
 
@@ -261,7 +253,7 @@ rule grab_bin_top_genomedb_acc:
         bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
     shell:
         """
-        python scripts/writeModeGffFeaturePerBin.py {input.contig_annotations} {input.bin_annotations}
+        python scripts/writeModeGffFeaturePerBin.py {input.contig_annotations} {output.bin_annotations}
         """
 
 
@@ -273,11 +265,8 @@ rule download_genomedb_acc:
         directory = directory(
             "GFFAnnotation/AssemblyFiles/{sample}.{processing}/")
     output:
-        out_tkn = "GFFAnnotation/AssemblyFiles/{sample}.{processing}/NCBI_Assembly_Download.tkn"
+        out_tkn = "GFFAnnotation/AssemblyFiles/{sample}_{processing}/NCBI_Assembly_Download.tkn"
     shell:
         """
         sh scripts/download_acc_ncbi.bash {input.bin_annotations} {params.directory}
         """
-
-
-#
