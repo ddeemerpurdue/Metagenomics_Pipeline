@@ -18,6 +18,14 @@ for one in config['TaxonAddThresh']:
     for two in config['TaxonAddThresh']:
         all_processing.append(f'TaxonRemovedA{one}R{two}')
 
+gff_processing = []
+for value in [90, 95, 99]:
+    for value2 in [90, 95, 99]:
+        for length in [2000, 5000]:
+            new_value = f"Full.{length}.TaxonRemovedA{value}R{value2}.ANIRepatT95M20"
+            gff_processing.append(new_value)
+
+
 rule all:
     input:
         all = expand(
@@ -48,7 +56,12 @@ rule all:
             processing=all_processing,
             thresh=config['ANIRepatIdentThreshold'],
             match=config['ANIRepatCountThreshold']
-            )
+            ),
+        gff_results = expand(
+            "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt",
+            sample=config['samples'],
+            processing=gff_processing
+        )
 
 
 
@@ -204,6 +217,9 @@ rule ani_based_contig_repatriation:
         ident_thresh = "{thresh}",
         count_thresh = "{match}",
         bin_directory = "BinIdentification"
+#    wildcard_constraints:
+#        match = "\d+",
+#        thresh = "\d+"
     output:
         bin_files = "FastANI/Filtered_{length}/{processing}.ANIRepatT{thresh}M{match}.{length}.txt",
         out = expand("BinIdentification/{sample}.{{length}}.{{processing}}.ANIRepatT{{thresh}}M{{match}}.txt", sample=config['samples'])
@@ -263,10 +279,23 @@ rule download_genomedb_acc:
         bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
     params:
         directory = directory(
-            "GFFAnnotation/AssemblyFiles/{sample}.{processing}/")
+            "GFFAnnotation/AssemblyFiles/{sample}_{processing}/")
     output:
         out_tkn = "GFFAnnotation/AssemblyFiles/{sample}_{processing}/NCBI_Assembly_Download.tkn"
     shell:
         """
         sh scripts/download_acc_ncbi.bash {input.bin_annotations} {params.directory}
+        """
+
+rule download_genomedb_acc:
+    input:
+        bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
+    params:
+        directory_name = "Assemblies"
+    output:
+        outdir=directory("Assemblies")
+    shell:
+        """
+        ./datasets download assembly GCA_003269275.1,GCF_000243215.1,GCF_001314995.1 --filename assemblydownloads.zip
+        unzip assemblydownloads.zip -d {params.directory_name}
         """
