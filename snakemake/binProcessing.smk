@@ -299,3 +299,55 @@ rule download_genomedb_acc:
         ./datasets download assembly GCA_003269275.1,GCF_000243215.1,GCF_001314995.1 --filename assemblydownloads.zip
         unzip assemblydownloads.zip -d {params.directory_name}
         """
+        
+supernatant_bins = ["{0:03}".format(i) for i in range(1, 255)]
+particle_bins = ["{0:03}".format(i) for i in range(1, 235)]
+
+
+rule all:
+    input:
+        #expand("blast_bin_{sample}/blastn.{number}.txt", sample='particle', number=particle_bins),
+        #expand("blast_nobin_{sample}/blastnNoBins.{number}.txt", sample='particle', number=particle_bins),
+        #expand("blast_nobin_{sample}/blastnNoBins.{number}.txt", sample='supernatant', number=supernatant_bins)
+
+rule blast_binners:
+    input:
+        bin_file = "Fastas/{sample}TRA90R99ANIT95M20/Bin.{number}.fasta",
+        assembly = "ReferenceFiles/{sample}/{number}.fasta"
+    params:
+        fmt="6"
+    output:
+        outfile = "blast_bin_{sample}/blastn.{number}.txt"
+    shell:
+        """
+        blastn -query {input.bin_file} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
+        """
+
+
+rule blast_nonbinners:
+    input:
+        nonbinner = "Fastas/{sample}TRA90R99ANIT95M20/Bin.NoBin.fasta",
+        assembly = "ReferenceFiles/{sample}/{number}.fasta"
+    params:
+        fmt="6"
+    output:
+        outfile = "blast_nobin_{sample}/blastnNoBins.{number}.txt"
+    shell:
+        """
+        blastn -query {input.nonbinner} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
+        """
+
+rule blast_repatriation:
+    input:
+        nonbin_results = expand("blast_nobin_{sample}/blastnNoBins.{num}.txt", sample='supernatant', num=supernatant_bins),
+        bin_results = expand("blast_bin_{sample}/blastn.{num}.txt",
+        sample='supernatant', num=supernatant_bins)
+    params:
+        threshold="85"
+    output:
+        log="logs/BlastNResults.T85.txt",
+        binid="BinIdentification/BlastNResults.T85.txt"
+    shell:
+        """
+        python blastContigRecycler.py -n {input.nonbin_results} {input.bin_results} -t {params.threshold}
+        """
