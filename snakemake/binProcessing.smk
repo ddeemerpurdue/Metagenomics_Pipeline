@@ -11,6 +11,7 @@ Starting input requires:
 '''
 
 configfile: "../config/config.yaml"
+
 all_processing = []
 for one in config['TaxonAddThresh']:
     for two in config['TaxonAddThresh']:
@@ -23,6 +24,8 @@ for value in [90, 95, 99]:
             new_value = f"Full.{length}.TaxonRemovedA{value}R{value2}.ANIRepatT95M20"
             gff_processing.append(new_value)
 
+supernatant_bins = ["{0:03}".format(i) for i in range(1, 255)]
+particle_bins = ["{0:03}".format(i) for i in range(1, 235)]
 
 rule all:
     input:
@@ -59,8 +62,20 @@ rule all:
             "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt",
             sample=config['samples'],
             processing=gff_processing
-        )
-
+        ),
+        # For now, needing 2 separate expand functions (1 per sample)
+        blast_bin_p = expand(
+            "blast_bin_{sample}/blastn.{number}.txt",
+            sample='particle', number=particle_bins),
+        blast_bin_s = expand(
+            "blast_bin_{sample}/blastn.{number}.txt",
+            sample='supernatant', number=supernatant_bins),
+        blast_nobin_p = expand(
+            "blast_nobin_{sample}/blastnNoBins.{number}.txt",
+            sample='particle', number=particle_bins),
+        blast_nobin_s = expand(
+            "blast_nobin_{sample}/blastnNoBins.{number}.txt",
+            sample='supernatant', number=supernatant_bins)
 
 
 # General Processing: Create a BinID file from list of .FASTA files
@@ -89,8 +104,8 @@ rule filter_taxonomy:
         addThresh = "{add}",
         removeThresh = "{remove}"
     wildcard_constraints:
-        add="\d+",
-        remove="\d+"
+        add = "\d+",
+        remove = "\d+"
     output:
         new_bin_id = "BinIdentification/{sample}.TaxonRemovedA{add}R{remove}.txt"
     log:
@@ -183,7 +198,7 @@ rule concatenate_output:
     output:
         outputs = "FastANI/Filtered_{length}/AllRawOriginalFastANIResults.{length}.txt"
     wildcard_constraints:
-        length="\d+"
+        length = "\d+"
     shell:
         """
         cat {input.files} > {output.outputs}
@@ -220,7 +235,8 @@ rule ani_based_contig_repatriation:
 #        thresh = "\d+"
     output:
         bin_files = "FastANI/Filtered_{length}/{processing}.ANIRepatT{thresh}M{match}.{length}.txt",
-        out = expand("BinIdentification/{sample}.{{length}}.{{processing}}.ANIRepatT{{thresh}}M{{match}}.txt", sample=config['samples'])
+        out = expand(
+            "BinIdentification/{sample}.{{length}}.{{processing}}.ANIRepatT{{thresh}}M{{match}}.txt", sample=config['samples'])
     shell:
         """
         python scripts/aniContigRecycler.py -a {input.ani_file} -t {params.ident_thresh} -m {params.count_thresh} -d {params.bin_directory} -o {output.bin_files}
@@ -271,6 +287,7 @@ rule grab_bin_top_genomedb_acc:
         """
 
 
+'''
 # Download all genomedb_acc from rule above.
 rule download_genomedb_acc:
     input:
@@ -297,23 +314,25 @@ rule download_genomedb_acc:
         ./datasets download assembly GCA_003269275.1,GCF_000243215.1,GCF_001314995.1 --filename assemblydownloads.zip
         unzip assemblydownloads.zip -d {params.directory_name}
         """
-        
-supernatant_bins = ["{0:03}".format(i) for i in range(1, 255)]
-particle_bins = ["{0:03}".format(i) for i in range(1, 235)]
+'''
 
 
-rule all:
+rule write_Fasta_from_binID:
     input:
-        #expand("blast_bin_{sample}/blastn.{number}.txt", sample='particle', number=particle_bins),
-        #expand("blast_nobin_{sample}/blastnNoBins.{number}.txt", sample='particle', number=particle_bins),
-        #expand("blast_nobin_{sample}/blastnNoBins.{number}.txt", sample='supernatant', number=supernatant_bins)
+        binID = "BinIdentification/{sample}.{processing}.txt"
+    output:
 
+    shell:
+        """
+        """
+
+# Blast all binned contigs against their reference assembly
 rule blast_binners:
     input:
         bin_file = "Fastas/{sample}TRA90R99ANIT95M20/Bin.{number}.fasta",
         assembly = "ReferenceFiles/{sample}/{number}.fasta"
     params:
-        fmt="6"
+        fmt = "6"
     output:
         outfile = "blast_bin_{sample}/blastn.{number}.txt"
     shell:
@@ -321,13 +340,13 @@ rule blast_binners:
         blastn -query {input.bin_file} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
         """
 
-
+# Blast non-binning contigs against all reference assemblies
 rule blast_nonbinners:
     input:
         nonbinner = "Fastas/{sample}TRA90R99ANIT95M20/Bin.NoBin.fasta",
         assembly = "ReferenceFiles/{sample}/{number}.fasta"
     params:
-        fmt="6"
+        fmt = "6"
     output:
         outfile = "blast_nobin_{sample}/blastnNoBins.{number}.txt"
     shell:
@@ -335,21 +354,24 @@ rule blast_nonbinners:
         blastn -query {input.nonbinner} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
         """
 
+# Repatriate contigs based on reference assemblies
 rule blast_repatriation:
     input:
-        nonbin_results = expand("blast_nobin_{sample}/blastnNoBins.{num}.txt", sample='supernatant', num=supernatant_bins),
+        nonbin_results = expand(
+            "blast_nobin_{sample}/blastnNoBins.{num}.txt", sample='supernatant', num=supernatant_bins),
         bin_results = expand("blast_bin_{sample}/blastn.{num}.txt",
         sample='supernatant', num=supernatant_bins)
     params:
-        threshold="85"
+        threshold = "85"
     output:
-        log="logs/BlastNResults.T85.txt",
-        binid="BinIdentification/BlastNResults.T85.txt"
+        log = "logs/BlastNResults.T85.txt",
+        binid = "BinIdentification/BlastNResults.T85.txt"
     shell:
         """
+
         python blastContigRecycler.py -n {input.nonbin_results} {input.bin_results} -t {params.threshold}
 <<<<<<< HEAD
         """
-=======
+== == == =
         """
 >>>>>>> origin/edits_dgd
