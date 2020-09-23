@@ -58,8 +58,8 @@ ANIRepatCountThreshold: 20
 \#config/cluster.json  
 
 {  
-    "\__default__":  
-    {  
+    "\__default__":  
+    {  
         "account": "standby",  
         "mem": "20G",  
         "time": "04:00:00",  
