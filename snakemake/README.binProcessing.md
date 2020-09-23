@@ -1,3 +1,4 @@
+<code>&nbsp;
 # 3 Step Bin Processing
 
 ### Based on:
@@ -99,3 +100,4 @@ Note: The Cat and Bat directories correspond to output files from the program Ca
 For the GFF file, this file must contain an attribute with the name *genomedb_acc* in order for this to work. MetaErg provides a gff file with this annotation.  
 
 ***
+</code>
