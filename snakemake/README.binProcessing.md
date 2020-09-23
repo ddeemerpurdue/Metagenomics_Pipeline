@@ -75,8 +75,8 @@ ANIRepatCountThreshold: 20
 #### Input directory:
 ./input  
 +-- Assembly  
-    +-- sample1.assembly.fasta  
-    +-- sample2.assembly.fasta  
+    +-- sample1.assembly.fasta  
+    +-- sample2.assembly.fasta  
 +-- OriginalBins  
     +-- {sample1}  
         +-- Bin.{number}.fasta  
