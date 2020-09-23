@@ -60,12 +60,12 @@ ANIRepatCountThreshold: 20
 {  
     "\__default__":  
     {  
-        "account": "standby",  
-        "mem": "20G",  
-        "time": "04:00:00",  
-        "cpus": 20,  
-        "ntasks-per-node": 20,  
-        "nodes": 1  
+        "account": "standby",  
+        "mem": "20G",  
+        "time": "04:00:00",  
+		"cpus": 20,  
+		"ntasks-per-node": 20,  
+		"nodes": 1  
     }  
 }  
 ---
