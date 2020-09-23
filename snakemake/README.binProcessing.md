@@ -35,22 +35,22 @@ This species multiple variables needed for the pipeline. Below is an example:
 ---
 \#config/config.yaml
 
+\# General attributes:
 samples: ['particle', 'supernatant']
-  
-  
-# Taxonomy Based Processing
+
+\# (1) Taxonomy Based Processing
 TaxonAddThresh: [90, 95, 99]
 TaxonRemoveThresh: [90, 95, 99]
   
-  
-# ANI Based Processing
+\# (2) ANI Based Processing
 ANIAssemblyFilterSize: [2000, 5000]
 ANIAssemblySplitSize: 9
-ANIAssemblySplits: ['aa', 'ab', 'ac', 'ad', 'ae', 'af', 'ag', 'ah', 'ai', 'aj']
-# Note, split size will normally split file into N + 1 files (if modulo != 0)
+ANIAssemblySplits: ['aa','ab','ac','ad','ae','af','ag','ah','ai','aj']
+Note: split size will normally split file into N + 1 files (if modulo != 0)
 FastANIMinFraction: 0.2
 FastANIFragLength: 1000
 ANIRepatIdentThreshold: 95
 ANIRepatCountThreshold: 20
 ---
+
 2. cluster.json
