@@ -63,10 +63,10 @@ ANIRepatCountThreshold: 20
         "account": "standby",  
         "mem": "20G",  
         "time": "04:00:00",  
-		"cpus": 20,  
-		"ntasks-per-node": 20,  
-		"nodes": 1  
-    }  
+        "cpus": 20,  
+        "ntasks-per-node": 20,  
+        "nodes": 1  
+    }  
 }  
 ---
 
@@ -77,23 +77,23 @@ ANIRepatCountThreshold: 20
     +-- sample1.assembly.fasta  
     +-- sample2.assembly.fasta  
 +-- OriginalBins  
-    +-- {sample1}  
-        +-- Bin.{number}.fasta  
-        +-- Bin.{number}.fasta  
-        +-- etc.
-    +-- {sample2) 
-        +-- Bin.{number}.fasta  
-        +-- Bin.{number}.fasta  
-        +-- etc. 
+    +-- {sample1}  
+        +-- Bin.{number}.fasta  
+        +-- Bin.{number}.fasta  
+        +-- etc.
+    +-- {sample2) 
+        +-- Bin.{number}.fasta  
+        +-- Bin.{number}.fasta  
+        +-- etc. 
 +-- Cat  
-    +-- {sample1}/{sample1}.C2C.names.txt  
-    +-- {sample2}/{sample1}.C2C.names.txt  
+    +-- {sample1}/{sample1}.C2C.names.txt  
+    +-- {sample2}/{sample1}.C2C.names.txt  
 +-- Bat  
-    +-- {sample1}/{sample1}.Bin2C.names.txt  
-    +-- {sample2}/{sample1}.Bin2C.names.txt  
+    +-- {sample1}/{sample1}.Bin2C.names.txt  
+    +-- {sample2}/{sample1}.Bin2C.names.txt  
 +-- GFF  
-    +-- {sample1}/{sample1}.All.gff  
-    +-- {sample2}/{sample1}.All.gff  
+    +-- {sample1}/{sample1}.All.gff  
+    +-- {sample2}/{sample1}.All.gff  
 
 Note: The Cat and Bat directories correspond to output files from the program CatBat. When copying into these folders, most likely the names will need to change to comply with this pipelines rules.  
 For the GFF file, this file must contain an attribute with the name *genomedb_acc* in order for this to work. MetaErg provides a gff file with this annotation.  
