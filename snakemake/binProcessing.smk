@@ -1,11 +1,9 @@
 '''
 Author: Dane
-
 Purpose: Snakemake pipeline that processes multiple samples bin files
 automatically. Various parameters can be specified in the config/config.yaml
 file and metadata will automatically be logged to compare various parameters
 effects on bin processing.
-
 Starting input requires:
 1. Bin files in 1+ directories (.fasta)
 2. MetaErg annotation - {sample}.gff file
@@ -17,6 +15,14 @@ all_processing = []
 for one in config['TaxonAddThresh']:
     for two in config['TaxonAddThresh']:
         all_processing.append(f'TaxonRemovedA{one}R{two}')
+
+gff_processing = []
+for value in [90, 95, 99]:
+    for value2 in [90, 95, 99]:
+        for length in [2000, 5000]:
+            new_value = f"Full.{length}.TaxonRemovedA{value}R{value2}.ANIRepatT95M20"
+            gff_processing.append(new_value)
+
 
 rule all:
     input:
@@ -48,7 +54,12 @@ rule all:
             processing=all_processing,
             thresh=config['ANIRepatIdentThreshold'],
             match=config['ANIRepatCountThreshold']
-            )
+            ),
+        gff_results = expand(
+            "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt",
+            sample=config['samples'],
+            processing=gff_processing
+        )
 
 
 
@@ -204,6 +215,9 @@ rule ani_based_contig_repatriation:
         ident_thresh = "{thresh}",
         count_thresh = "{match}",
         bin_directory = "BinIdentification"
+#    wildcard_constraints:
+#        match = "\d+",
+#        thresh = "\d+"
     output:
         bin_files = "FastANI/Filtered_{length}/{processing}.ANIRepatT{thresh}M{match}.{length}.txt",
         out = expand("BinIdentification/{sample}.{{length}}.{{processing}}.ANIRepatT{{thresh}}M{{match}}.txt", sample=config['samples'])
@@ -263,10 +277,75 @@ rule download_genomedb_acc:
         bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
     params:
         directory = directory(
-            "GFFAnnotation/AssemblyFiles/{sample}.{processing}/")
+            "GFFAnnotation/AssemblyFiles/{sample}_{processing}/")
     output:
         out_tkn = "GFFAnnotation/AssemblyFiles/{sample}_{processing}/NCBI_Assembly_Download.tkn"
     shell:
         """
         sh scripts/download_acc_ncbi.bash {input.bin_annotations} {params.directory}
+        """
+
+rule download_genomedb_acc:
+    input:
+        bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
+    params:
+        directory_name = "Assemblies"
+    output:
+        outdir=directory("Assemblies")
+    shell:
+        """
+        ./datasets download assembly GCA_003269275.1,GCF_000243215.1,GCF_001314995.1 --filename assemblydownloads.zip
+        unzip assemblydownloads.zip -d {params.directory_name}
+        """
+        
+supernatant_bins = ["{0:03}".format(i) for i in range(1, 255)]
+particle_bins = ["{0:03}".format(i) for i in range(1, 235)]
+
+
+rule all:
+    input:
+        #expand("blast_bin_{sample}/blastn.{number}.txt", sample='particle', number=particle_bins),
+        #expand("blast_nobin_{sample}/blastnNoBins.{number}.txt", sample='particle', number=particle_bins),
+        #expand("blast_nobin_{sample}/blastnNoBins.{number}.txt", sample='supernatant', number=supernatant_bins)
+
+rule blast_binners:
+    input:
+        bin_file = "Fastas/{sample}TRA90R99ANIT95M20/Bin.{number}.fasta",
+        assembly = "ReferenceFiles/{sample}/{number}.fasta"
+    params:
+        fmt="6"
+    output:
+        outfile = "blast_bin_{sample}/blastn.{number}.txt"
+    shell:
+        """
+        blastn -query {input.bin_file} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
+        """
+
+
+rule blast_nonbinners:
+    input:
+        nonbinner = "Fastas/{sample}TRA90R99ANIT95M20/Bin.NoBin.fasta",
+        assembly = "ReferenceFiles/{sample}/{number}.fasta"
+    params:
+        fmt="6"
+    output:
+        outfile = "blast_nobin_{sample}/blastnNoBins.{number}.txt"
+    shell:
+        """
+        blastn -query {input.nonbinner} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
+        """
+
+rule blast_repatriation:
+    input:
+        nonbin_results = expand("blast_nobin_{sample}/blastnNoBins.{num}.txt", sample='supernatant', num=supernatant_bins),
+        bin_results = expand("blast_bin_{sample}/blastn.{num}.txt",
+        sample='supernatant', num=supernatant_bins)
+    params:
+        threshold="85"
+    output:
+        log="logs/BlastNResults.T85.txt",
+        binid="BinIdentification/BlastNResults.T85.txt"
+    shell:
+        """
+        python blastContigRecycler.py -n {input.nonbin_results} {input.bin_results} -t {params.threshold}
         """

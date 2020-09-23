@@ -63,7 +63,7 @@ def read_bastn_reference(blast_file):
 def format_name(nb_blast_file, threshold):
     ''' String name formatting '''
     nb_file = os.path.basename(str(nb_blast_file))
-    bin_num = str(nb_file).split('.')[0]
+    bin_num = str(nb_file).split('.')[1]
     new_file_prefix = f"{bin_num}.{str(threshold)}."
     binID_file = new_file_prefix + "txt"
     binLog_file = new_file_prefix + "log"
@@ -207,8 +207,8 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
         print(
             f"BF: {str(os.path.basename(blast_file))}\nNBF: {str(os.path.basename(nb_blast_file))}")
         # Make sure both files are the same
-        assert str(os.path.basename(blast_file)) == str(
-            os.path.basename(nb_blast_file))
+        assert str(os.path.basename(blast_file).split('.')[1]) == str(
+            os.path.basename(nb_blast_file).split('.')[1])
         current_dic, current_log = read_blastn_nobinners(
             blast_file, nb_blast_file, threshold)
         master_log.extend(current_log)  # Add log information to list
@@ -225,8 +225,8 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
                 final_blast_dic[contig] = current_dic[contig]
 
     # Now write the results to an output file:
-    output = f"FinalBlastNResults.T{str(threshold).split('.')[1]}.txt"
-    log_output = f"FinalBlastNResults.T{str(threshold).split('.')[1]}.log"
+    output = f"logs/BlastNResults.T{str(threshold).split('.')[1]}.txt"
+    log_output = f"BinIdentification/BlastNResults.T{str(threshold).split('.')[1]}.log"
     with open(output, 'w') as o:
         for key, value in final_blast_dic.items():
             if value == 'NoTaxon':
