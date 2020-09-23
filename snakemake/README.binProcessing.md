@@ -41,7 +41,7 @@ samples: ['particle', 'supernatant']
 \# (1) Taxonomy Based Processing
 TaxonAddThresh: [90, 95, 99]
 TaxonRemoveThresh: [90, 95, 99]
-  
+
 \# (2) ANI Based Processing
 ANIAssemblyFilterSize: [2000, 5000]
 ANIAssemblySplitSize: 9
