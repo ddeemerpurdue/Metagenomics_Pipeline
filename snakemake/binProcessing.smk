@@ -348,4 +348,8 @@ rule blast_repatriation:
     shell:
         """
         python blastContigRecycler.py -n {input.nonbin_results} {input.bin_results} -t {params.threshold}
+<<<<<<< HEAD
         """
+=======
+        """
+>>>>>>> origin/edits_dgd
