@@ -33,24 +33,69 @@ Inside this directory there should be 2 files:
 1. config.yaml
 This species multiple variables needed for the pipeline. Below is an example:
 ---
-\#config/config.yaml
+\#config/config.yaml  
 
-\# General attributes:
-samples: ['particle', 'supernatant']
+\# General attributes:  
+samples: ['particle', 'supernatant']  
 
-\# (1) Taxonomy Based Processing
-TaxonAddThresh: [90, 95, 99]
-TaxonRemoveThresh: [90, 95, 99]
+\# (1) Taxonomy Based Processing  
+TaxonAddThresh: [90, 95, 99]  
+TaxonRemoveThresh: [90, 95, 99]  
 
-\# (2) ANI Based Processing
-ANIAssemblyFilterSize: [2000, 5000]
-ANIAssemblySplitSize: 9
-ANIAssemblySplits: ['aa','ab','ac','ad','ae','af','ag','ah','ai','aj']
-Note: split size will normally split file into N + 1 files (if modulo != 0)
-FastANIMinFraction: 0.2
-FastANIFragLength: 1000
-ANIRepatIdentThreshold: 95
-ANIRepatCountThreshold: 20
+\# (2) ANI Based Processing  
+ANIAssemblyFilterSize: [2000, 5000]  
+ANIAssemblySplitSize: 9  
+ANIAssemblySplits: ['aa','ab','ac','ad','ae','af','ag','ah','ai','aj']  
+Note: split size will normally split file into N + 1 files (if modulo != 0)  
+FastANIMinFraction: 0.2  
+FastANIFragLength: 1000  
+ANIRepatIdentThreshold: 95  
+ANIRepatCountThreshold: 20  
 ---
 
 2. cluster.json
+---
+\#config/cluster.json  
+
+{  
+    "\__default__":  
+    {  
+        "account": "standby",  
+        "mem": "20G",  
+        "time": "04:00:00",  
+        "cpus": 20,  
+        "ntasks-per-node": 20,  
+        "nodes": 1  
+    }  
+}  
+---
+
+
+#### Input directory:
+./input  
++-- Assembly  
+    +-- sample1.assembly.fasta  
+    +-- sample2.assembly.fasta  
++-- OriginalBins  
+    +-- {sample1}  
+        +-- Bin.{number}.fasta  
+        +-- Bin.{number}.fasta  
+        +-- etc.
+    +-- {sample2) 
+        +-- Bin.{number}.fasta  
+        +-- Bin.{number}.fasta  
+        +-- etc. 
++-- Cat  
+    +-- {sample1}/{sample1}.C2C.names.txt  
+    +-- {sample2}/{sample1}.C2C.names.txt  
++-- Bat  
+    +-- {sample1}/{sample1}.Bin2C.names.txt  
+    +-- {sample2}/{sample1}.Bin2C.names.txt  
++-- GFF  
+    +-- {sample1}/{sample1}.All.gff  
+    +-- {sample2}/{sample1}.All.gff  
+
+Note: The Cat and Bat directories correspond to output files from the program CatBat. When copying into these folders, most likely the names will need to change to comply with this pipelines rules.  
+For the GFF file, this file must contain an attribute with the name *genomedb_acc* in order for this to work. MetaErg provides a gff file with this annotation.  
+
+***
