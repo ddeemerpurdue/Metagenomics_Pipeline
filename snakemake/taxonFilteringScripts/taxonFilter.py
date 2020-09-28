@@ -32,6 +32,8 @@ def read_taxonomy(taxonFile, bins=False):
             else:
                 line = line.strip().split('\t')
                 if bins is True:
+                    assert name.startwith(
+                        'NODE'), f"Not a valid contig name in {taxonFile}"
                     name = line[0].split('.')[1]
                 else:
                     name = line[0]
@@ -49,6 +51,9 @@ def read_bin_identifier(binfile):
     bin_dic = {}
     with open(binfile) as i:
         line = i.readline()
+
+        assert len(line.split(
+            '\t')) == 2, "Bin identification file does not consist of 2 fields!"
         while line:
             bin_num = line.split('\t')[0]
             contig = line.split('\t')[1].strip()
@@ -213,16 +218,19 @@ def loop_contig_taxonomies(binTaxonFile, contigTaxonFile, binidfile,
                     contigs_moved[contig] = new[2]
             else:
                 pass
-    print(f"Removed: {remove_count}\nAdded: {add_count}\n")
+        o.write(f"Removed: {remove_count}\nAdded: {add_count}\n")
     # Finally, write a master binID file:
     with open(output, 'w') as out:
-        for contig in contigs_moved.keys():
-            out.write(f"{contigs_moved[contig]}\t{contig}\n")
-        for contig in bin_ident.keys():
-            if contig in contigs_moved:
-                pass
-            else:
-                out.write(f"{bin_ident[contig]}\t{contig}\n")
+        moved_bin_id = f"{output.rsplit('.', 1)[0]}.TROnly.txt"
+        with open(moved_bin_id, 'w') as out2:
+            for contig in contigs_moved.keys():
+                out.write(f"{contigs_moved[contig]}\t{contig}\n")
+                out2.write(f"{contigs_moved[contig]}\t{contig}\n")
+            for contig in bin_ident.keys():
+                if contig in contigs_moved:
+                    pass
+                else:
+                    out.write(f"{bin_ident[contig]}\t{contig}\n")
 
     return remove_count
 

@@ -87,17 +87,17 @@ rule create_bin_id_file:
     log:
         "logs/generalProcessing/{sample}.BinIDCreation.log"
     output:
-        "BinIdentification/{sample}.OriginalBinID.txt"
+        protected("BinIdentification/{sample}.Original.txt")
     shell:
         """
-        python scripts/getContigBinIdentifier.py -f {params.bins}/*.fasta -o {output} -l {log}
+        python scripts/getContigBinIdentifier.py -f {params.bins}*.fasta -o {output} -l {log}
         """
 
 
 # Filter contigs based on Cat/Bat taxonomic scores.
 rule filter_taxonomy:
     input:
-        bin_id = "BinIdentification/{sample}.OriginalBinID.txt",
+        bin_id = "BinIdentification/{sample}.{processing}.txt",
         cat = "../input/Cat/{sample}/{sample}.C2C.names.txt",
         bat = "../input/Bat/{sample}/{sample}.Bin2C.names.txt"
     params:
@@ -107,9 +107,9 @@ rule filter_taxonomy:
         add = "\d+",
         remove = "\d+"
     output:
-        new_bin_id = "BinIdentification/{sample}.TaxonRemovedA{add}R{remove}.txt"
+        new_bin_id = "BinIdentification/{sample}.{processing}TaxonRemovedA{add}R{remove}.txt"
     log:
-        readme = "logs/taxonFiltering/{sample}.TaxonRemovedA{add}R{remove}.log"
+        readme = "logs/taxonFiltering/{sample}.{processing}TaxonRemovedA{add}R{remove}.log"
     shell:
         """
         python scripts/taxonFilter.py -i {input.bin_id} -c {input.cat} -b {input.bat} \
@@ -123,59 +123,52 @@ rule filter_taxonomy:
 # Given an assembly file, filter to only contain contigs > 5kb (or whatever spec. in config file)
 rule filter_contigs:
     input:
-        assembly = "../input/Assembly/{sample}.Assembly500.fasta"
+        assembly = "../input/Assembly/{sample}.original500.fasta"
     params:
         length = "{length}"
     log:
-        "logs/ANI/filtering{sample}Assembly{length}.log"
+        "logs/generalProcessing/filtering{sample}Assembly{length}.log"
+    wildcard_constraints:
+        length = "\d+"
     output:
         outputs = "../input/Assembly/Filtered/{sample}.Assembly{length}.fasta"
-    script:
-        "scripts/filterContigsSm.py"
+    shell:
+        "python scripts/filterSeqLength.py -a {input.assembly} -l {params.length} -o {output.outputs} -g {log}"
+
 
 # Split up assembly file into many files, each corresponding to 1 fasta entry
+# and write all output to a list, along with N subsetted lists.
 rule split_filtered_contigs:
     input:
         assembly = "../input/Assembly/Filtered/{sample}.Assembly{length}.fasta"
     params:
-        folder = "../input/Assembly/Filtered/Split-Files-{length}/{sample}"
+        parts = config['ANIAssemblySplitSize']
+    log:
+        "logs/generalProcessing/{sample}.{length}.FastaEntrySplitting.log"
     output:
-        outputs = "../input/Assembly/Filtered/Split-Files-{length}/{sample}/{sample}.{length}.complete.tkn"
+        files = directory(
+            "../input/Assembly/Filtered/Split-Files-{length}/{sample}/"),
+        filelist = "../input/Assembly/Filtered/Split-Files-{length}/{sample}.AllContigsList{length}.txt",
+        splitlist = expand("../input/Assembly/Filtered/Split-Files-{{length}}/{{sample}}.AllContigsList{{length}}_{split}.txt", split=range(
+            1, int(config['ANIAssemblySplitSize']) + 1))
     shell:
         """
-        scripts/split_mfa.sh {input.assembly} {params.folder}
-        touch ../input/Assembly/Filtered/Split-Files-{wildcards.length}/{wildcards.sample}/{wildcards.sample}.{wildcards.length}.complete.tkn
+        python scripts/splitFastaByEntry.py -a {input.assembly} -o {output.files} -l {output.filelist} -n {params.parts} -g {log}
         """
 
-# From the list of contigs from split_filtered_contigs,
-# create a list specifying their path.
-rule make_contig_list:
-    input:
-        samples = "../input/Assembly/Filtered/Split-Files-{length}/{sample}/{sample}.{length}.complete.tkn"
-    output:
-        outputs = "../input/Assembly/Filtered/Split-Files-{length}/{sample}.{length}.AllContigsList.txt"
-    script:
-        "scripts/makelist.py"
-
-
-# Split the list files into N smaller files specified by config['ANIAssemblySplitSize']
-rule split_lists:
-    input:
-        lists = "../input/Assembly/Filtered/Split-Files-{length}/{sample}.{length}.AllContigsList.txt"
-    params:
-        split_size = config['ANIAssemblySplitSize'],
-        directory = "../input/Assembly/Filtered/Split-Files-{length}"
-    output:
-        outputs = "../input/Assembly/Filtered/Split-Files-{length}/{sample}.{length}_{split}"
-    script:
-        "scripts/splitList.py"
-
-
+# Thought - test out global wildcards
+# split_fastas=glob_wildcards("../input/Assembly/Filtered/Split-Files-{length}/{sample}/{file}.fasta")
+# Then make this temporary input in run_fastani
+# Make a wildcard for all files in the above 'files' output:
+split_fasta_files, = glob_wildcards(
+    "../input/Assembly/Filtered/Split-Files-2000/{name}.fasta")
 # Run the fastANI program now! using full lists as query and split lists as points to actual files
 rule run_fastani:
     input:
-        full_lists = "../input/Assembly/Filtered/Split-Files-{length}/{query}.{length}.AllContigsList.txt",
-        split_lists = "../input/Assembly/Filtered/Split-Files-{length}/{reference}.{length}_{split}"
+        queryfiles = temp(split_fasta_files),
+        reffiles = temp(split_fasta_files),
+        full_lists = "../input/Assembly/Filtered/Split-Files-{length}/{query}.AllContigsList{length}.txt",
+        split_lists = "../input/Assembly/Filtered/Split-Files-{length}/{reference}.AllContigsList{length}_{split}.txt"
     params:
         minfrac = config['FastANIMinFraction'],
         fraglen = config['FastANIFragLength']

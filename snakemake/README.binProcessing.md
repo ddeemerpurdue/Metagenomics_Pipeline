@@ -30,7 +30,7 @@ The initial tree structure should look as follows:
 
 #### Configuration directory:
 Inside this directory there should be 2 files:
-1. config.yaml
+###1. config.yaml  
 This species multiple variables needed for the pipeline. Below is an example:
 ---
 \#config/config.yaml  
@@ -52,8 +52,10 @@ FastANIFragLength: 1000
 ANIRepatIdentThreshold: 95  
 ANIRepatCountThreshold: 20  
 ---
+---
 
-2. cluster.json
+
+###2. cluster.json
 ---
 \#config/cluster.json  
 
@@ -70,13 +72,12 @@ ANIRepatCountThreshold: 20
 }  
 ---
 
-
 #### Input directory:
 ./input  
-+-- Assembly  
++-- Assembly/  
     +-- sample1.assembly.fasta  
     +-- sample2.assembly.fasta  
-+-- OriginalBins  
++-- OriginalBins/  
     +-- {sample1}  
         +-- Bin.{number}.fasta  
         +-- Bin.{number}.fasta  
@@ -85,17 +86,41 @@ ANIRepatCountThreshold: 20
         +-- Bin.{number}.fasta  
         +-- Bin.{number}.fasta  
         +-- etc. 
-+-- Cat  
++-- Cat/  
     +-- {sample1}/{sample1}.C2C.names.txt  
     +-- {sample2}/{sample1}.C2C.names.txt  
-+-- Bat  
++-- Bat/  
     +-- {sample1}/{sample1}.Bin2C.names.txt  
     +-- {sample2}/{sample1}.Bin2C.names.txt  
-+-- GFF  
++-- GFF/  
     +-- {sample1}/{sample1}.All.gff  
     +-- {sample2}/{sample1}.All.gff  
 
-Note: The Cat and Bat directories correspond to output files from the program CatBat. When copying into these folders, most likely the names will need to change to comply with this pipelines rules.  
+**Note:** The Cat and Bat directories correspond to output files from the program CatBat. When copying into these folders, most likely the names will need to change to comply with this pipelines rules.  
 For the GFF file, this file must contain an attribute with the name *genomedb_acc* in order for this to work. MetaErg provides a gff file with this annotation.  
 
+#### workflow directory:
+./workflow  
++-- envs/  
++-- logs/
++-- scripts/
+    +-- aniContigRecycler.py  
+    +-- appendBinsToANI.py  
+    +-- blastContigRecycler.py  
+    +-- download_acc_ncbi.bash  
+    +-- filterContigsSm.py  
+    +-- filterSeqLength.py  
+    +-- findNonBinners.py  
+    +-- getContigBinIdentifier.py  
+    +-- gffMine.py  
+    +-- makelist.py  
+    +-- splitList.py  
+    +-- split_mfa.sh  
+    +-- split.py  
+    +-- taxonFilter.py  
+    +-- taxonRemovedBinIDFromLogFile.py  
+    +-- writeFastaFromBinID.py  
+    +-- writeModeGffFeaturePerBin.py
++-- snake.smk
+**Note**: All other files will be automatically generated throughout the pipeline.
 ***
