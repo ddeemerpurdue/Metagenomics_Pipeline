@@ -27,58 +27,30 @@ for value in [90, 95, 99]:
 supernatant_bins = ["{0:03}".format(i) for i in range(1, 255)]
 particle_bins = ["{0:03}".format(i) for i in range(1, 235)]
 
+
+# Start of all of the rules #
 rule all:
     input:
-        all = expand(
-            "BinIdentification/{sample}.TaxonRemovedA{add}R{remove}.txt",
+        taxon_step = expand(
+            "BinIdentification/{sample}.{processing}TaxonRemovedA{add}R{remove}.txt",
             sample=config['samples'],
             add=config['TaxonAddThresh'],
-            remove=config['TaxonRemoveThresh']
+            remove=config['TaxonRemoveThresh'],
+            processing=config['TaxonProcessing']
         ),
-        ani = expand(
-            "FastANI/Filtered_{length}/Q{query}_R{reference}.{length}_{split}.txt",
-            length=config['ANIAssemblyFilterSize'],
-            query=config['samples'],
-            reference=config['samples'],
-            split=config['ANIAssemblySplits']
-            ),
-        all_ani = expand(
-            "FastANI/Filtered_{length}/AllRawOriginalFastANIResults.{length}.txt",
-            length=config['ANIAssemblyFilterSize']),
-        append_bins = expand(
-            "FastANI/Filtered_{length}/AllProcessed.{processing}.FastANIResults.{length}.txt",
-            length=config['ANIAssemblyFilterSize'],
-            processing=all_processing
-        ),
-        final_ani = expand(
-            "BinIdentification/{sample}.Full.{length}.{processing}.ANIRepatT{thresh}M{match}.txt",
+        ani_step = expand(
+            "BinIdentification/{sample}.Full{length}_{processing}ANIRepatT{thresh}M{match}.txt",
             sample=config['samples'],
             length=config['ANIAssemblyFilterSize'],
-            processing=all_processing,
+            processing=['Original', 'OriginalTaxonRemovedA80R90'],
             thresh=config['ANIRepatIdentThreshold'],
-            match=config['ANIRepatCountThreshold']
-            ),
-        gff_results = expand(
-            "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt",
-            sample=config['samples'],
-            processing=gff_processing
-        ),
-        # For now, needing 2 separate expand functions (1 per sample)
-        blast_bin_p = expand(
-            "blast_bin_{sample}/blastn.{number}.txt",
-            sample='particle', number=particle_bins),
-        blast_bin_s = expand(
-            "blast_bin_{sample}/blastn.{number}.txt",
-            sample='supernatant', number=supernatant_bins),
-        blast_nobin_p = expand(
-            "blast_nobin_{sample}/blastnNoBins.{number}.txt",
-            sample='particle', number=particle_bins),
-        blast_nobin_s = expand(
-            "blast_nobin_{sample}/blastnNoBins.{number}.txt",
-            sample='supernatant', number=supernatant_bins)
+            match=config['ANIRepatCountThreshold']) 
 
 
-# General Processing: Create a BinID file from list of .FASTA files
+# ~~~~~~~~~~ STEP 0: General Processing ~~~~~~~~~~ #
+
+
+#Create a BinID file from list of .FASTA files
 rule create_bin_id_file:
     input:
         bins = "../input/OriginalBins/{sample}/Bin.001.fasta"
@@ -90,11 +62,14 @@ rule create_bin_id_file:
         protected("BinIdentification/{sample}.Original.txt")
     shell:
         """
-        python scripts/getContigBinIdentifier.py -f {params.bins}*.fasta -o {output} -l {log}
+        python scripts/getContigBinIdentifier.py -f {params.bins}/*.fasta -o {output} -l {log}
         """
 
 
-# Filter contigs based on Cat/Bat taxonomic scores.
+# ~~~~~~~~~~ STEP 1: Taxonomic Processing ~~~~~~~~~~ #
+
+
+# Add and remove contigs based on taxonomies of contigs and respective bins
 rule filter_taxonomy:
     input:
         bin_id = "BinIdentification/{sample}.{processing}.txt",
@@ -117,17 +92,18 @@ rule filter_taxonomy:
         """
 
 
-### ~~~~~ fastANI portion of the processing pipeline ~~~~~ ###
+# ~~~~~~~~~~ STEP 1: ANI-Based Processing ~~~~~~~~~~ #
 
 
-# Given an assembly file, filter to only contain contigs > 5kb (or whatever spec. in config file)
+# Filter the assembly to contain only contigs >= n
+# This is prep for fastANI
 rule filter_contigs:
     input:
         assembly = "../input/Assembly/{sample}.original500.fasta"
     params:
         length = "{length}"
     log:
-        "logs/generalProcessing/filtering{sample}Assembly{length}.log"
+        "logs/ANI/filtering{sample}Assembly{length}.log"
     wildcard_constraints:
         length = "\d+"
     output:
@@ -136,8 +112,9 @@ rule filter_contigs:
         "python scripts/filterSeqLength.py -a {input.assembly} -l {params.length} -o {output.outputs} -g {log}"
 
 
-# Split up assembly file into many files, each corresponding to 1 fasta entry
-# and write all output to a list, along with N subsetted lists.
+# Prep for fastANI by splitting the assembly into multiple subsetted files
+# Output consists of a .fasta file for EVERY entry in the assembly, a list
+# of all the locations to said files, and n splits of that list file.
 rule split_filtered_contigs:
     input:
         assembly = "../input/Assembly/Filtered/{sample}.Assembly{length}.fasta"
@@ -156,19 +133,12 @@ rule split_filtered_contigs:
         python scripts/splitFastaByEntry.py -a {input.assembly} -o {output.files} -l {output.filelist} -n {params.parts} -g {log}
         """
 
-# Thought - test out global wildcards
-# split_fastas=glob_wildcards("../input/Assembly/Filtered/Split-Files-{length}/{sample}/{file}.fasta")
-# Then make this temporary input in run_fastani
-# Make a wildcard for all files in the above 'files' output:
-split_fasta_files, = glob_wildcards(
-    "../input/Assembly/Filtered/Split-Files-2000/{name}.fasta")
-# Run the fastANI program now! using full lists as query and split lists as points to actual files
+
+# Run the fastANI program and get results for all splits.
 rule run_fastani:
     input:
-        queryfiles = temp(split_fasta_files),
-        reffiles = temp(split_fasta_files),
-        full_lists = "../input/Assembly/Filtered/Split-Files-{length}/{query}.AllContigsList{length}.txt",
-        split_lists = "../input/Assembly/Filtered/Split-Files-{length}/{reference}.AllContigsList{length}_{split}.txt"
+        full_list = "../input/Assembly/Filtered/Split-Files-{length}/{query}.AllContigsList{length}.txt",
+        split_list = "../input/Assembly/Filtered/Split-Files-{length}/{reference}.AllContigsList{length}_{split}.txt"
     params:
         minfrac = config['FastANIMinFraction'],
         fraglen = config['FastANIFragLength']
@@ -178,17 +148,19 @@ rule run_fastani:
         outputs = "FastANI/Filtered_{length}/Q{query}_R{reference}.{length}_{split}.txt"
     shell:
         """
-        fastANI -t 20 --minFraction {params.minfrac} --fragLen {params.fraglen} --ql {input.full_lists} --rl {input.split_lists} -o {output.outputs} &> {log}
-        touch FastANI/Filtered_{wildcards.length}/AniComplete.tkn
+        fastANI -t 20 --minFraction {params.minfrac} --fragLen {params.fraglen} --ql {input.full_list} --rl {input.split_list} -o {output.outputs} &> {log}
         """
 
 
+# Concatenate all of the parallelized fastANI results and remove all the split
+# fasta entries (see temporary output file)
 rule concatenate_output:
     input:
         files = expand("FastANI/Filtered_{{length}}/Q{query}_R{reference}.{{length}}_{split}.txt",
                        query=config['samples'], reference=config['samples'],
                        split=config['ANIAssemblySplits'])
     output:
+        split_files = temp(directory(expand("../input/Assembly/Filtered/Split-Files-{{length}}/{sample}/", sample=config['samples']))),
         outputs = "FastANI/Filtered_{length}/AllRawOriginalFastANIResults.{length}.txt"
     wildcard_constraints:
         length = "\d+"
@@ -196,9 +168,6 @@ rule concatenate_output:
         """
         cat {input.files} > {output.outputs}
         """
-
-
-### ~~~~~ fastANI REPATRIATION portion of the processing pipeline ~~~~~ ###
 
 
 # Append bins to the default output from fastANI
@@ -215,7 +184,7 @@ rule append_bins_to_ani:
         """
 
 
-# Run aniContigRecycler.py on the results and output
+# The the ANI-based repatriation script to add new contigs
 rule ani_based_contig_repatriation:
     input:
         ani_file = "FastANI/Filtered_{length}/AllProcessed.{processing}.FastANIResults.{length}.txt"
@@ -223,9 +192,9 @@ rule ani_based_contig_repatriation:
         ident_thresh = "{thresh}",
         count_thresh = "{match}",
         bin_directory = "BinIdentification"
-#    wildcard_constraints:
-#        match = "\d+",
-#        thresh = "\d+"
+    wildcard_constraints:
+        match = "\d+",
+        thresh = "\d+"
     output:
         bin_files = "FastANI/Filtered_{length}/{processing}.ANIRepatT{thresh}M{match}.{length}.txt",
         out = expand(
@@ -236,20 +205,22 @@ rule ani_based_contig_repatriation:
         """
 
 
-# This is where we tie in the bin identification to the ANI processing
+# This is where ANI gets merged with previous bin identification files, since
+# the ANI-repat step only write a binID file with the new contigs.
 rule concat_ani_bin_ident:
     input:
         bins_to_add_to = "BinIdentification/{sample}.{processing}.txt",
         ani_bins = "BinIdentification/{sample}.{length}.{processing}.ANIRepat{params}.txt"
     output:
-        new_bins = "BinIdentification/{sample}.Full.{length}.{processing}.ANIRepat{params}.txt"
+        new_bins = "BinIdentification/{sample}.Full{length}_{processing}ANIRepat{params}.txt"
     shell:
         """
         cat {input.bins_to_add_to} {input.ani_bins} > {output.new_bins}
         """
 
 
-### ~~~~~ blastn REPATRIATION portion of the processing pipeline ~~~~~ ###
+# ~~~~~~~~~~ STEP 3: BlastN Processing ~~~~~~~~~~ #
+
 
 
 # Find the top genomedb_acc feature per contig

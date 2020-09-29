@@ -1,5 +1,11 @@
-from random import randrange
+mylist = ['dane', 'amanda', 'dillon']
 
-for i in range(20):
-    rand_number = randrange(1, 11)
-    print(f"Loop {i}:\t Number: {rand_number}")
+
+
+for cnt, val in enumerate(mylist):
+	if val == 'dane':
+		newval = 'daners'
+		mylist.pop(cnt)
+		mylist.append(newval)
+
+print(mylist)
