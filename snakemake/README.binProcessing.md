@@ -29,7 +29,7 @@ The initial tree structure should look as follows:
 +-- workflow
 
 #### Configuration directory:
-Inside this directory there should be 2 files:
+Inside this directory there should be 2 files:  
 ###1. config.yaml  
 This species multiple variables needed for the pipeline. Below is an example:
 ---

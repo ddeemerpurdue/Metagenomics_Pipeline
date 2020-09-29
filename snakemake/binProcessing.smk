@@ -12,10 +12,11 @@ Starting input requires:
 
 configfile: "../config/config.yaml"
 
-all_processing = []
+# A list of all possible taxon processing on original results.
+all_taxon_processing = []
 for one in config['TaxonAddThresh']:
     for two in config['TaxonAddThresh']:
-        all_processing.append(f'TaxonRemovedA{one}R{two}')
+        all_processing.append(f'OriginalTaxonRemovedA{one}R{two}')
 
 gff_processing = []
 for value in [90, 95, 99]:
@@ -31,26 +32,36 @@ particle_bins = ["{0:03}".format(i) for i in range(1, 235)]
 # Start of all of the rules #
 rule all:
     input:
-        taxon_step = expand(
+        taxonfilter = expand(
             "BinIdentification/{sample}.{processing}TaxonRemovedA{add}R{remove}.txt",
             sample=config['samples'],
             add=config['TaxonAddThresh'],
             remove=config['TaxonRemoveThresh'],
             processing=config['TaxonProcessing']
         ),
-        ani_step = expand(
-            "BinIdentification/{sample}.Full{length}_{processing}ANIRepatT{thresh}M{match}.txt",
+        filter = expand(
+            "../input/Assembly/Filtered/{sample}.Assembly{length}.fasta",
+            length=config['ANIAssemblyFilterSize'],
+            sample=config['samples']
+            ),
+        fastani = expand(
+            "FastANI/Filtered_{length}/Q{query}_R{reference}.{length}_{split}.txt",
+            length=10000,
+            query=config['samples'],
+            reference=config['samples'],
+            split=config['ANIAssemblySplits']),
+        last_fastani = expand("BinIdentification/{sample}.Full{length}_{processing}ANIRepatT{thresh}M{match}.txt",
             sample=config['samples'],
             length=config['ANIAssemblyFilterSize'],
-            processing=['Original', 'OriginalTaxonRemovedA80R90'],
+            processing=all_taxon_processing,
             thresh=config['ANIRepatIdentThreshold'],
-            match=config['ANIRepatCountThreshold']) 
+            match=config['ANIRepatCountThreshold'])
 
 
 # ~~~~~~~~~~ STEP 0: General Processing ~~~~~~~~~~ #
 
 
-#Create a BinID file from list of .FASTA files
+# Create a BinID file from list of .FASTA files
 rule create_bin_id_file:
     input:
         bins = "../input/OriginalBins/{sample}/Bin.001.fasta"
@@ -160,7 +171,8 @@ rule concatenate_output:
                        query=config['samples'], reference=config['samples'],
                        split=config['ANIAssemblySplits'])
     output:
-        split_files = temp(directory(expand("../input/Assembly/Filtered/Split-Files-{{length}}/{sample}/", sample=config['samples']))),
+        split_files = temp(directory(expand(
+            "../input/Assembly/Filtered/Split-Files-{{length}}/{sample}/", sample=config['samples']))),
         outputs = "FastANI/Filtered_{length}/AllRawOriginalFastANIResults.{length}.txt"
     wildcard_constraints:
         length = "\d+"
@@ -220,7 +232,6 @@ rule concat_ani_bin_ident:
 
 
 # ~~~~~~~~~~ STEP 3: BlastN Processing ~~~~~~~~~~ #
-
 
 
 # Find the top genomedb_acc feature per contig
