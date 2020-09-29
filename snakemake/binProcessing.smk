@@ -188,11 +188,13 @@ rule append_bins_to_ani:
         ani_file = "FastANI/Filtered_{length}/AllRawOriginalFastANIResults.{length}.txt",
         bin_id = expand(
             "BinIdentification/{sample}.{{processing}}.txt", sample=config['samples'])
+    log:
+        "logs/FastANI/BinAppending_{length}.{processing}.FastANI.log"
     output:
         new_ani = "FastANI/Filtered_{length}/AllProcessed.{processing}.FastANIResults.{length}.txt"
     shell:
         """
-        python scripts/appendBinsToANI.py -a {input.ani_file} -b {input.bin_id} -o {output.new_ani}
+        python scripts/appendBinsToANI.py -a {input.ani_file} -b {input.bin_id} -o {output.new_ani} -l {log}
         """
 
 
@@ -207,6 +209,8 @@ rule ani_based_contig_repatriation:
     wildcard_constraints:
         match = "\d+",
         thresh = "\d+"
+    log:
+        "logs/FastANI/ContigRepatriation_{length}_{processing}.ANIRepatT{thresh}M{match}.{length}.log"
     output:
         bin_files = "FastANI/Filtered_{length}/{processing}.ANIRepatT{thresh}M{match}.{length}.txt",
         out = expand(

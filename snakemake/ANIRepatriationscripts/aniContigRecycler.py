@@ -11,6 +11,7 @@ Query, Reference, Qnode, Rnode, ANI, Orthos, Total, Qbin, Rbin
 Example usage:
 $ python aniContigRecycler.py -a ANIFILE.txt -t 90 -m 200 -o output90T200M.txt
 """
+import time
 import pandas as pd
 import os
 
@@ -186,8 +187,9 @@ def map_unbinned_contigs(file, threshold, matches):
     return lines
 
 
-def write_recycled_bins(file, threshold, matches, output, bin_directory):
+def write_recycled_bins(file, threshold, matches, output, bin_directory, log):
     a = map_unbinned_contigs(file, threshold, matches)
+    count = len(a)  # Keep track of how many contigs were placed.
     with open(output, 'w') as o:
         for line in a:
             o.write(line)
@@ -196,6 +198,7 @@ def write_recycled_bins(file, threshold, matches, output, bin_directory):
             if sample == 'query':  # Don't write a file for the header!
                 pass
             else:
+
                 contig = line.split('\t')[2]
                 bin_num = line.split('\t')[4].strip()
                 processing = os.path.basename(str(file)).split('.')[1]
@@ -205,10 +208,18 @@ def write_recycled_bins(file, threshold, matches, output, bin_directory):
                 full_bin_file = os.path.join(bin_directory, bin_file)
                 with open(full_bin_file, 'a') as bin_out:
                     bin_out.write(f"{bin_num}\t{contig}\n")
+    # Add to the log file:
+    with open(log, 'a') as lg:
+        lg.write(f"Time started: {time.asctime(now)}\n")
+        lg.write(f"{count} contigs were repatriated during this run.\n")
+        now = time.localtime(time.time())
+        lg.write(f"Time ended: {time.asctime(now)}\n")
     return None
 
 
 if __name__ == "__main__":
+    import time
+    now = time.localtime(time.time())
     import argparse
     """ Arguments """
     parser = argparse.ArgumentParser(description="Parser")
