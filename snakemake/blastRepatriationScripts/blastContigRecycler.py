@@ -202,6 +202,8 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
     final_blast_dic = {}
     blast_files = sorted(blast_files)
     nb_blast_files = sorted(nb_blast_files)
+    assert len(blast_files) == len(
+        nb_blast_files), "Blast and non-blast file lists differ in length!"
     # Loop through all files
     for blast_file, nb_blast_file in zip(blast_files, nb_blast_files):
         print(

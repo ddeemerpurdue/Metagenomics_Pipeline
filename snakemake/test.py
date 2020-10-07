@@ -52,17 +52,9 @@
 # data = multiple_euclidean_distance_v(a, b)
 # print(data)
 
-
-import subprocess
 import os
 
-command = f"esearch -db assembly -query GCA_900066305.1 | esummary | xtract -pattern DocumentSummary -element FtpPath_GenBank"
-get_download_link = subprocess.Popen(
-    command, stdout=subprocess.PIPE,
-    shell=True)
-ftp_link = get_download_link.stdout.read().strip().decode("utf-8")
-file_link = f"{str(os.path.basename(ftp_link))}_genomic.fna.gz"
-full_link = f"{ftp_link}/{file_link}"
-print(f"FTP link: {ftp_link}")
-print(f"File link: {file_link}")
-print(f"Full link: {full_link}")
+print(os.listdir('CalcCoverageScripts/'))
+ref = 'CalcCoverageScripts/'
+myfile = [os.path.join(ref, f) for f in os.listdir(ref) if f.endswith('e.py')]
+print(myfile)

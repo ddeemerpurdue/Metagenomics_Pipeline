@@ -294,43 +294,43 @@ rule write_Fasta_from_binID:
     params:
         fasta_directory = directory("Fastas/{sample}/{processing}/"),
     output:
-        fasta_bin = "Fastas/{sample}/{processing}/Bin.001.fasta"
+        fasta_bin = directory("Fastas/{sample}/{processing}/")
     shell:
         """
         python scripts/writeFastaFromBinID.py -b {input.binID} -a {input.assembly} -f {params.fasta_directory}
         """
 
 
-
 # ~~~ Part B: Blasting and Repatriating ~~~ #
-# Could make a zip + expand for this
-# Blast all binned contigs against their reference assembly
 rule blast_binners:
     input:
         fasta_file = "Fastas/{sample}/{processing}/Bin.{number}.fasta",
-        assembly = "References/{sample}/{processing/{number}.{assembly}.fasta"
+        reference = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.success.txt"
     params:
         fmt = "6"
+    log:
+        "logs/BlastRepatriation/blastn_{sample}.{processing}.{number}.log"
     output:
-        outfile = "blast_bin_{sample}/{processing}/blastn.{number}.{assembly}.txt"
+        outfile = "BlastBinners/{sample}/{processing}/blastn.{number}.txt"
     shell:
         """
-        blastn -query {input.fasta_file} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
+        python scripts/blastAssemblies.py -query {input.fasta_file} -f {params.fmt} -l {log}
         """
 
-# Here, just expand the number_assembly wildcard
-# Blast non-binning contigs against all reference assemblies
-rule blast_nonbinners:
+
+rule blast_no_binners:
     input:
-        nonbinner = "Fastas/{sample}/{processing}/Bin.NoBin.fasta",
-        assembly = "References/{sample}/{processing/{number_assembly}.fasta"
+        fasta_file = "Fastas/{sample}/{processing}/Bin.NoBin.fasta",
+        reference = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.success.txt"
     params:
         fmt = "6"
+    log:
+        "logs/BlastRepatriation/blastn_{sample}.{processing}.NoBin.log"
     output:
-        outfile = "blast_nobin_{sample}/{processing}/blastnNoBins.{number_assembly}.txt"
+        outfile = "BlastBinners/{sample}/{processing}/blastn.NoBins.success.txt"
     shell:
         """
-        blastn -query {input.nonbinner} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
+        python scripts/blastAssemblies.py -NoBin -query {input.fasta_file} -f {params.fmt} -l {log}
         """
 
 # Repatriate contigs based on reference assemblies

@@ -95,7 +95,7 @@ def check_assembly_downloads(
                 file_link = f"{str(os.path.basename(ftp_link))}_genomic.fna.gz"
                 full_link = f"{ftp_link}/{file_link}"
                 print(full_assembly)
-                download_command = f"wget {full_link} -O {full_assembly}.fasta"
+                download_command = f"wget {full_link} -O {full_assembly}.fasta.gz && {full_assembly}.fasta.gz"
             log.write(
                 f"Command to download {assembly}:\n{download_command}\n\n")
             try:
