@@ -8,9 +8,10 @@ Example usage:
 $ python writeTopGFFFeaturePerBin.py <inputfeature.txt> <output.txt>
 '''
 import sys
+import time
 
 
-def read_attribute_output(attfile):
+def read_attribute_output(attfile, logfile):
     '''
     Read in GFF attribute output and return a dictionary
     in the form of dict[bin] = attribute, where attribute is
@@ -18,6 +19,7 @@ def read_attribute_output(attfile):
     '''
     output_dic = {}
     final_dic = {}
+    adequate = False
     '''
     Output dictionary is in the form of:
     dict[bins] = [attr1, attr2, etc.]...
@@ -37,20 +39,27 @@ def read_attribute_output(attfile):
             except KeyError:
                 output_dic[bins] = [attrib]
             line = f.readline()
-    # Now loop through dictionary we created
-    for bins in output_dic.keys():
-        besthit = 0
-        for val in set(output_dic[bins]):
-            # Count each occurence of attrib
-            count = output_dic[bins].count(val)
-            if count > besthit:
-                besthit = count
-                final_dic[bins] = [val, besthit]
-    print(final_dic)
+    # Now loop through dictionary we created and log
+    with open(logfile, 'a') as lg:
+        lg.write(
+            f"Full tab-delimited record of all bins with assemblies with >=10 contig hits:\n")
+        for bins in output_dic.keys():
+            besthit = 9
+            for val in set(output_dic[bins]):
+                # Count each occurence of attrib
+                count = output_dic[bins].count(val)
+                if count > besthit:
+                    lg.write(f"{bins}\t{val}\t{count}\n")
+                    besthit = count
+                    final_dic[bins] = [val, besthit]
+                    adequate = True
+            if not adequate:
+                lg.write(
+                    f"Bin {bins} does not have an adequate assembly match.\n")
     return final_dic
 
 
-def write_new_bin_file(attfile, output):
+def write_new_bin_file(attfile, output, logfile):
     '''
     Function that takes in a dictionary in the form of:
     dict[bin] = [Assembly, N]
@@ -58,7 +67,7 @@ def write_new_bin_file(attfile, output):
     # Dict[node] = bin
     # bin_dic = get_bin_dictionary(binfile)
     # Dict[bin] = Attribute
-    att_dict = read_attribute_output(attfile)
+    att_dict = read_attribute_output(attfile, logfile)
     with open(output, 'w') as o:
         header = f"Bin\tAssembly\tN"
         for key in att_dict.keys():
@@ -68,4 +77,21 @@ def write_new_bin_file(attfile, output):
     return 0
 
 
-write_new_bin_file(sys.argv[1], sys.argv[2])
+if __name__ == "__main__":
+    now = time.localtime(time.time())
+    import argparse
+    """ Arguments """
+    parser = argparse.ArgumentParser(description="Parser")
+    parser.add_argument("-a", "--AttributeFile",
+                        help="Attribute file", required=True)
+    parser.add_argument("-o", "--Output",
+                        help="Output file to write to", required=True)
+    parser.add_argument("-l", "--Log",
+                        help="Log file to write to", required=True)
+    argument = parser.parse_args()
+    with open(argument.Log, 'a') as lg:
+        lg.write(f"Time started: {time.asctime(now)}\n")
+        write_new_bin_file(argument.AttributeFile, argument.Output,
+                           argument.Log)
+        now = time.localtime(time.time())
+        lg.write(f"Time ended: {time.asctime(now)}\n")

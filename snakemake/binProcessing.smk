@@ -114,7 +114,7 @@ rule filter_contigs:
     params:
         length = "{length}"
     log:
-        "logs/ANI/filtering{sample}Assembly{length}.log"
+        "logs/FastANI/filtering{sample}Assembly{length}.log"
     wildcard_constraints:
         length = "\d+"
     output:
@@ -238,6 +238,7 @@ rule concat_ani_bin_ident:
 # ~~~~~~~~~~ STEP 3: BlastN Processing ~~~~~~~~~~ #
 
 
+# ~~~ Part A: Prepping for Repatriation ~~~ #
 # Find the top genomedb_acc feature per contig
 rule grab_contig_top_genomedb_acc:
     input:
@@ -245,7 +246,7 @@ rule grab_contig_top_genomedb_acc:
         bin_id = "BinIdentification/{sample}.{processing}.txt"
     params:
         attribute = "genomedb_acc",
-#        bin_id = "BinIdentification/{sample}.{processing}.Full.txt"
+        bin_id = "BinIdentification/{sample}.{processing}.Full.txt"
     output:
         out_file = "GFFAnnotation/{sample}/{sample}.{processing}.TopContigGenomeDBAcc.txt"
     shell:
@@ -258,76 +259,75 @@ rule grab_contig_top_genomedb_acc:
 rule grab_bin_top_genomedb_acc:
     input:
         contig_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopContigGenomeDBAcc.txt"
+    log:
+        "logs/BlastRepatration/{sample}.{processing}.TopBinGenomeDBAcc.log"
     output:
         bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
     shell:
         """
-        python scripts/writeModeGffFeaturePerBin.py {input.contig_annotations} {output.bin_annotations}
+        python scripts/writeModeGffFeaturePerBin.py -a {input.contig_annotations} -o {output.bin_annotations} -l {log}
         """
 
 
-'''
 # Download all genomedb_acc from rule above.
+# Assemblies download in the form: {bin_num}.{assembly_#}.fasta
 rule download_genomedb_acc:
     input:
         bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
     params:
-        directory = directory(
-            "GFFAnnotation/AssemblyFiles/{sample}_{processing}/")
+        assembly_database = protected(directory(config['AssembliesDatabase']))
+    log:
+        "logs/BlastRepatriation/assemblyDownloading-{sample}-{processing}.log"
     output:
-        out_tkn = "GFFAnnotation/AssemblyFiles/{sample}_{processing}/NCBI_Assembly_Download.tkn"
+        "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.success.txt"
     shell:
         """
-        sh scripts/download_acc_ncbi.bash {input.bin_annotations} {params.directory}
+        python scripts/downloadAssemblies.py -g {input.bin_annotations}  -a {params.assembly_database}/{wildcards.sample}/{wildcards.processing} -l {log}
         """
 
-rule download_genomedb_acc:
-    input:
-        bin_annotations = "GFFAnnotation/{sample}/{sample}.{processing}.TopBinGenomeDBAcc.txt"
-    params:
-        directory_name = "Assemblies"
-    output:
-        outdir=directory("Assemblies")
-    shell:
-        """
-        ./datasets download assembly GCA_003269275.1,GCF_000243215.1,GCF_001314995.1 --filename assemblydownloads.zip
-        unzip assemblydownloads.zip -d {params.directory_name}
-        """
-'''
 
-
+# Could add a global wildcard to make sure same amount of bins are produced
 rule write_Fasta_from_binID:
     input:
-        binID = "BinIdentification/{sample}.{processing}.txt"
+        binID = "BinIdentification/{sample}.{processing}.txt",
+        assembly = "../input/Assembly/{sample}.original500.fasta"
+    params:
+        fasta_directory = directory("Fastas/{sample}/{processing}/"),
     output:
-
+        fasta_bin = "Fastas/{sample}/{processing}/Bin.001.fasta"
     shell:
         """
+        python scripts/writeFastaFromBinID.py -b {input.binID} -a {input.assembly} -f {params.fasta_directory}
         """
 
+
+
+# ~~~ Part B: Blasting and Repatriating ~~~ #
+# Could make a zip + expand for this
 # Blast all binned contigs against their reference assembly
 rule blast_binners:
     input:
-        bin_file = "Fastas/{sample}TRA90R99ANIT95M20/Bin.{number}.fasta",
-        assembly = "ReferenceFiles/{sample}/{number}.fasta"
+        fasta_file = "Fastas/{sample}/{processing}/Bin.{number}.fasta",
+        assembly = "References/{sample}/{processing/{number}.{assembly}.fasta"
     params:
         fmt = "6"
     output:
-        outfile = "blast_bin_{sample}/blastn.{number}.txt"
+        outfile = "blast_bin_{sample}/{processing}/blastn.{number}.{assembly}.txt"
     shell:
         """
-        blastn -query {input.bin_file} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
+        blastn -query {input.fasta_file} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
         """
 
+# Here, just expand the number_assembly wildcard
 # Blast non-binning contigs against all reference assemblies
 rule blast_nonbinners:
     input:
-        nonbinner = "Fastas/{sample}TRA90R99ANIT95M20/Bin.NoBin.fasta",
-        assembly = "ReferenceFiles/{sample}/{number}.fasta"
+        nonbinner = "Fastas/{sample}/{processing}/Bin.NoBin.fasta",
+        assembly = "References/{sample}/{processing/{number_assembly}.fasta"
     params:
         fmt = "6"
     output:
-        outfile = "blast_nobin_{sample}/blastnNoBins.{number}.txt"
+        outfile = "blast_nobin_{sample}/{processing}/blastnNoBins.{number_assembly}.txt"
     shell:
         """
         blastn -query {input.nonbinner} -subject {input.assembly} -outfmt {params.fmt} -out {output.outfile}
@@ -347,7 +347,6 @@ rule blast_repatriation:
         binid = "BinIdentification/BlastNResults.T85.txt"
     shell:
         """
-
         python blastContigRecycler.py -n {input.nonbin_results} {input.bin_results} -t {params.threshold}
 <<<<<<< HEAD
         """
