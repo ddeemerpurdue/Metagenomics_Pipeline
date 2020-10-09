@@ -1,52 +1,69 @@
-configfile: "config/config.yaml"
 '''
-configfile should have the following attributes:
-Step 0:
-- assembly
-- index  # Unique identifier per sample
-- threads
-- readpath
-Step 1:
+Authors: Dane Deemer and Renee Oles
+Purpose: Snakemake pipeline that takes fastq DNA reads and bins
+using a reference assebmly 
+Input: 
+- Samples 
+- Index (sample identifiers)
+- Threads 
+- Threshold
+- Readsize
+results:
 - readsize
 - threshold
 - maxbin_abunds
 - refinem_bams
 '''
+configfile: "../config/config.yaml"
 
 
 rule all:
     input:
-        expand("AssemblyIndex/{index}.1.bt2", index=config['index'])
-        expand("Bam/{sample}.bam", sample=config['samples'])
+        expand("AssemblyIndex/{index}.1.bt2", index=config['index']),
+        expand("Bam/Original/{sample}.sorted.bam.bai", sample=config['samples'])
 
 
-# PART 0: Essentials
+# ~~~~~~~~~~ STEP 0: Essentials ~~~~~~~~~~ #
 # [Assembly Indexing - Alignment - Bam Sorting - Bam Indexing]
-# Speed: **
-''' Essentials Start '''
 
-# index_assembly: index the assembly (or any fasta file)
+# Filter fastq files
+'''
+rule filter_fastq:
+    input:
+        reads=expand("FastqFiltered/{sample}_{num}.fastq", sample=config['samples'], num=["R1","R2"])
+    params:
+        threads=config["threads"]
+    conda:
+        "envs/fastqc.yaml"
+    output:
+        directory("FastqFiltered")
+    log:
+        "logs/filter_fastq.{sample}_{num}.log"
+    shell:
+        "fastqc -t {params.threads}  --outdir {output} {input.reads} >> {log}"
+'''
+
+# Index the assembly (or any fasta file)
 rule index_assembly:
     input:
-        config["assembly"]
+        #needed=directory("FastqFiltered"),
+        assembly="../input/Assembly/{index}.fasta"
     params:
-        index=config["index"],
-        threads=config["threads"]
+        threads=config["threads"],
+        index="AssemblyIndex/{index}"
     conda:
         "envs/alignment.yaml"
     output:
-        f"AssemblyIndex/{config['index']}.1.bt2"
+        "AssemblyIndex/{index}.1.bt2"
     log:
-        f"logs/assemblyIndexing.{config['index']}.log"
+        "logs/assemblyIndexing.{index}.log"
     shell:
-        """
-        bowtie2-build -f --threads {params.threads} {input} AssemblyIndex/{params.index} >> {log}
-        """
+        "bowtie2-build -f --threads {params.threads} {input.assembly} {params.index} >> {log}"
 
-# bowtie2_alignment: align fastq files to indexed assembly from above rule
+# Align fastq files to indexed assembly from above rule
 rule bowtie2_alignment:
     input:
-        reads=expand("{path}{{sample}}_{num}_10000.fastq", path=config['readpath'], num=['R1','R2']),
+        reads=expand("../input/Fastq/{{sample}}_{num}.fastq", num=["R1","R2"]),
         i=f"AssemblyIndex/{config['index']}.1.bt2"
     params:
         index=f"AssemblyIndex/{config['index']}",
@@ -54,23 +71,23 @@ rule bowtie2_alignment:
     conda:
         "envs/alignment.yaml"
     output:
-        temp("Bam/{sample}.bam")
+    	"Bam/Original/{sample}.bam"
     log:
         "logs/bowtie2Alignment.{sample}.log"
     shell:
         "(bowtie2 --threads {params.threads} -x {params.index} -1 {input.reads[0]} -2 {input.reads[1]} | samtools view -b -o {output}) &> {log}"
 
-# bam_sorting: sort bam file created from above rule
+# Sort bam file created from above rule
 rule bam_sorting:
     input:
-        "Bam/{sample}.bam"
+        "Bam/Original/{sample}.bam"
     params:
-        prefix="Bam/pref.{sample}",
+        prefix="Bam/Original/pref.{sample}",
         threads=config['threads']
     conda:
         "envs/alignment.yaml"
     output:
-        protected("Bam/{sample}.sorted.bam")
+        "Bam/Original/{sample}.sorted.bam"
     log:
         "logs/samtoolsSort.{sample}.log"
     shell:
@@ -79,28 +96,24 @@ rule bam_sorting:
 # bam_indexing: Index the bam file (required for downstream programs)
 rule bam_indexing:
     input:
-        "Bam/{sample}.sorted.bam"
+        "Bam/Original/{sample}.sorted.bam"
     conda:
         "envs/alignment.yaml"
     output:
-        "Bam/{sample}.sorted.bam.bai"
+        "Bam/Original/{sample}.sorted.bam.bai"
     log:
         "logs/samtoolsIndex.{sample}.log"
     shell:
         "samtools index -@20 {input} &> {log}"
 
-''' Essentials Complete '''
-''' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ '''
 
-# PART 1: Base Processing
+# ~~~~~~~~~~ STEP 1: General Processing ~~~~~~~~~~ #
 # [Bam Filtering - Calculating Coverage - Abundance Filter - Abundance File Merge]
-# Speed: ****
-''' Base Processing Start '''
 
-# filter_bams: filter BAM files to only contain reads mapping above a certain threshold of percent identity.
+# Filter BAM files to only contain reads mapping above a certain threshold of percent identity.
 rule filter_bams:
     input:
-        "Bam/{sample}.sorted.bam"
+        "Bam/Original/{sample}.sorted.bam"
     params:
         readsize=config['readsize'],
         threshold=config['threshold']
@@ -113,10 +126,10 @@ rule filter_bams:
     shell:
         "(samtools view -h {input} | python scripts/sam_threshold_filter.py -s {params.readsize} -t {params.threshold} | samtools view -b -o {output} && samtools index -@20 {output}) &> {log}"
 
-# bbmap_stats: Calculate coverage stats per contig
+# Calculate coverage stats per contig
 rule bbmap_stats:
-    input:  # Wildcard path used for filtered or normal: for normal, path == "."
-        "Bam/{path}/{sample}.sorted.bam"
+    input:
+        samples=lambda wildcards: expand(f"Bam/{wildcards.path}/{{sample}}.sorted.bam")
     conda:
         "envs/bbmap.yaml"
     output:
@@ -136,7 +149,7 @@ rule get_cov_file:
 
 rule get_abund_list:
     input:
-        samples=lambda wildcards: expand(f"Abundances/{wildcards.path}/{{sample}}.abundance.txt", sample=config['maxbin_abunds2'])
+        samples=lambda wildcards: expand(f"Abundances/{wildcards.path}/{{sample}}.abundance.txt")
     output:
         "Abundances/{path}/abundance_list.txt"
     script:
@@ -145,7 +158,7 @@ rule get_abund_list:
 rule run_maxbin:
     input:
         abund="Abundances/{path}/abundance_list.txt",
-        scaff=config["assembly"]
+        scaff="../input/Assembly/{index}.fasta"
     conda:
         "envs/binning.yaml"
     output:
@@ -179,14 +192,31 @@ rule run_checkm:
         """
 
 # Further refine bins using refineM
-# Change the below variable!!!
-rm_path = "Default"
 rule run_refinem:
     input:
-        bam=expand("Bam/{mypath}/{sample}.sorted.bam", mypath=rm_path, sample=config['refinem_abunds']),
+        bam=expand("Bam/Original/{sample}.sorted.bam", sample=config['samples']),
+    params:
+        assembly="../input/Aseembly/{index}.fasta",
+        reference=config["reference"],
+        mb=directory("Maxbin/")
+    conda:
+        "envs/refinem.yaml"
+    output:
+        directory("RefineM")
+    log:
+        "logs/refinem.log"
+    shell:
+        "python scripts/refinem_snakemake.py -a {params.assembly} -b ../{input.mb} -m ../{input.bam} -s RefineM -r {params.reference} &> {log}"
+
+'''
+# Change the below variable!!!
+#rm_path = "Default"
+rule run_refinem:
+    input:
+        bam=expand("Bam/{mypath}/{sample}.sorted.bam", mypath=rm_path, sample=config['samples']),
         mb=directory("Maxbin/{path}/")
     params:
-        assembly=config["assembly"],
+        assembly="../input/Aseembly/{index}.fasta",
         reference=config["reference"]
     conda:
         "envs/refinem.yaml"
@@ -197,7 +227,7 @@ rule run_refinem:
     shell:
         "python scripts/refinem_snakemake.py -a {params.assembly} -b ../{input.mb} -m ../{input.bam} -s RefineM -r {params.reference} &> {log}"
 
-''' Complete this last part later '''
+ Complete this last part later 
 # Estimate completion and contamination after refinement
 rule run_checkm:
     input:
@@ -216,4 +246,4 @@ rule run_checkm:
         checkm lineage_wf -t {params.threads} -x fasta {input} {params.out} &> {log}
         checkm qa -t {params.threads} {output} {params.out} &> {log}
         """
-''' Complete this last part later '''
+Complete this last part later '''
