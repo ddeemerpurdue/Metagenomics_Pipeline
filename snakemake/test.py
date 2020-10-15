@@ -52,9 +52,22 @@
 # data = multiple_euclidean_distance_v(a, b)
 # print(data)
 
-import os
+def small_function(log):
+    print(log.name)
+    if log.name == 'dane.txt':
+        return 1
+    log.write(f"Inside smal function.\n")
+    print('Inside!')
 
-print(os.listdir('CalcCoverageScripts/'))
-ref = 'CalcCoverageScripts/'
-myfile = [os.path.join(ref, f) for f in os.listdir(ref) if f.endswith('e.py')]
-print(myfile)
+
+def function(log):
+    with open(log, 'w') as lg:
+        lg.write(f"First line!\n")
+        if small_function(lg) == 1:
+            return 1
+        lg.write(f'After small function call.\n')
+    return 0
+
+
+a = function('dane.txt')
+print(a)

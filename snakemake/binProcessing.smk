@@ -43,7 +43,7 @@ rule all:
             "../input/Assembly/Filtered/{sample}.Assembly{length}.fasta",
             length=config['ANIAssemblyFilterSize'],
             sample=config['samples']
-            ),
+        ),
         fastani = expand(
             "FastANI/Filtered_{length}/Q{query}_R{reference}.{length}_{split}.txt",
             length=10000,
@@ -51,11 +51,11 @@ rule all:
             reference=config['samples'],
             split=config['ANIAssemblySplits']),
         last_fastani = expand("BinIdentification/{sample}.Full{length}_{processing}ANIRepatT{thresh}M{match}.txt",
-            sample=config['samples'],
-            length=config['ANIAssemblyFilterSize'],
-            processing=all_taxon_processing,
-            thresh=config['ANIRepatIdentThreshold'],
-            match=config['ANIRepatCountThreshold'])
+                              sample=config['samples'],
+                              length=config['ANIAssemblyFilterSize'],
+                              processing=all_taxon_processing,
+                              thresh=config['ANIRepatIdentThreshold'],
+                              match=config['ANIRepatCountThreshold'])
 
 
 # ~~~~~~~~~~ STEP 0: General Processing ~~~~~~~~~~ #
@@ -330,26 +330,31 @@ rule blast_no_binners:
         outfile = "BlastBinners/{sample}/{processing}/blastn.NoBins.success.txt"
     shell:
         """
-        python scripts/blastAssemblies.py -NoBin -query {input.fasta_file} -f {params.fmt} -l {log}
+        python scripts/blastAssemblies.py --NoBin -q {input.fasta_file} -f {params.fmt} -l {log}
         """
 
+
+p_nums, = glob_wildcards(
+    "BlastBinners/particle/Full10000_OriginalTaxonRemovedA80R99ANIRepatT95M20/blastn.NoBin_{num}.txt")
+s_nums, = glob_wildcards(
+    "BlastBinners/supernatant/Full10000_OriginalTaxonRemovedA80R99ANIRepatT95M20/blastn.NoBin_{num}.txt")
 # Repatriate contigs based on reference assemblies
+# Will have to change the NoBin_{num} to {num}.NoBin
 rule blast_repatriation:
     input:
         nonbin_results = expand(
-            "blast_nobin_{sample}/blastnNoBins.{num}.txt", sample='supernatant', num=supernatant_bins),
-        bin_results = expand("blast_bin_{sample}/blastn.{num}.txt",
-        sample='supernatant', num=supernatant_bins)
+            "BlastBinners/{{sample}}/{{processing}}/blastn.NoBin_{num}.txt",
+            num=s_nums),
+        bin_results = expand(
+            "BlastBinners/{{sample}}/{{processing}}/blastn.{num}.txt",
+            num=s_nums)
     params:
         threshold = "85"
+    log:
+        "logs/BlastRepatriation/{sample}.{processing}_BlastnT85L2000.log"
     output:
-        log = "logs/BlastNResults.T85.txt",
-        binid = "BinIdentification/BlastNResults.T85.txt"
+        binid = "BinIdentification/{sample}.{processing}_BlastnT85L2000.txt"
     shell:
         """
-        python blastContigRecycler.py -n {input.nonbin_results} {input.bin_results} -t {params.threshold}
-<<<<<<< HEAD
+        python blastContigRecycler.py -n {input.nonbin_results} -b {input.bin_results} -t {params.threshold}
         """
-== == == =
-        """
->>>>>>> origin/edits_dgd

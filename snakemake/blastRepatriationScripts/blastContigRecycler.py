@@ -171,7 +171,7 @@ def read_blastn_nobinners(blast_file, nb_blast_file, threshold):
                 length = float(line[3])
                 similarity = calc_similarity(contig_length,
                                              pident, length)
-                if (similarity >= minimal_match and length > 1500):
+                if (similarity >= minimal_match and length > 2000):
                     '''If we have a match, we want to write this output
                     to a binID file and log the reason. But first, see if we've
                     already encountered and wrote this contig:'''
@@ -202,6 +202,8 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
     final_blast_dic = {}
     blast_files = sorted(blast_files)
     nb_blast_files = sorted(nb_blast_files)
+    sample = blast_files[0].split('/')[1]
+    processing = blast_files[0].split('/')[2]
     assert len(blast_files) == len(
         nb_blast_files), "Blast and non-blast file lists differ in length!"
     # Loop through all files
@@ -210,7 +212,7 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
             f"BF: {str(os.path.basename(blast_file))}\nNBF: {str(os.path.basename(nb_blast_file))}")
         # Make sure both files are the same
         assert str(os.path.basename(blast_file).split('.')[1]) == str(
-            os.path.basename(nb_blast_file).split('.')[1])
+            os.path.basename(nb_blast_file).split('.')[1].split('_')[1])
         current_dic, current_log = read_blastn_nobinners(
             blast_file, nb_blast_file, threshold)
         master_log.extend(current_log)  # Add log information to list
@@ -227,14 +229,14 @@ def write_all_blastn(blast_files, nb_blast_files, threshold):
                 final_blast_dic[contig] = current_dic[contig]
 
     # Now write the results to an output file:
-    output = f"logs/BlastNResults.T{str(threshold).split('.')[1]}.txt"
-    log_output = f"BinIdentification/BlastNResults.T{str(threshold).split('.')[1]}.log"
+    output = f"BinIdentification/{sample}.{processing}_BlastnT{str(threshold).split('.')[1]}L2000.txt"
+    log_output = f"logs/BlastRepatriation/{sample}.{processing}_BlastnT{str(threshold).split('.')[1]}L2000.log"
     with open(output, 'w') as o:
         for key, value in final_blast_dic.items():
             if value == 'NoTaxon':
                 pass
             else:
-                writeline = value[0] + '\t' + key + '\n'
+                writeline = value[0].split('_')[1] + '\t' + key + '\n'
                 o.write(writeline)
     with open(log_output, 'w') as log:
         for line in master_log:
