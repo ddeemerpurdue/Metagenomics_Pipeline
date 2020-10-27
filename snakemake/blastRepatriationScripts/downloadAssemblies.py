@@ -85,7 +85,7 @@ def check_assembly_downloads(
             full_assembly = os.path.join(assemblyLocation, write_assembly)
             if assembly.startswith("GCF"):
                 gca = False
-                download_command = f"esearch -db nucleotide -query {assembly} | efetch -format fasta > {full_assembly}.fasta"
+                download_command = f"esearch -db nucleotide -query {assembly} | efetch -format fasta > {full_assembly}.fasta > /dev/null 2>&1"
             elif assembly.startswith("GCA"):
                 gca = True
                 command = f"esearch -db assembly -query GCA_900066305.1 | esummary | xtract -pattern DocumentSummary -element FtpPath_GenBank"
@@ -95,7 +95,7 @@ def check_assembly_downloads(
                 file_link = f"{str(os.path.basename(ftp_link))}_genomic.fna.gz"
                 full_link = f"{ftp_link}/{file_link}"
                 print(full_assembly)
-                download_command = f"wget {full_link} -O {full_assembly}.fasta.gz && {full_assembly}.fasta.gz"
+                download_command = f"wget {full_link} -O {full_assembly}.fasta.gz && {full_assembly}.fasta.gz > /dev/null 2>&1"
             log.write(
                 f"Command to download {assembly}:\n{download_command}\n\n")
             try:

@@ -7,7 +7,6 @@ with the option --Top specified.
 Example usage:
 $ python writeTopGFFFeaturePerBin.py <inputfeature.txt> <output.txt>
 '''
-import sys
 import time
 
 
@@ -32,7 +31,6 @@ def read_attribute_output(attfile, logfile):
             line = line.split('\t')
             assert len(line) == 4, "Error in number of delimiters."
             attrib = line[1]
-            n = line[2]
             bins = line[3].strip()
             try:
                 output_dic[bins].append(attrib)
@@ -42,17 +40,18 @@ def read_attribute_output(attfile, logfile):
     # Now loop through dictionary we created and log
     with open(logfile, 'a') as lg:
         lg.write(
-            f"Full tab-delimited record of all bins with assemblies with >=10 contig hits:\n")
+            f"Full tab-delimited record of all bins with assemblies with >=50% contig consensus:\n")
         for bins in output_dic.keys():
-            besthit = 9
-            for val in set(output_dic[bins]):
-                # Count each occurence of attrib
-                count = output_dic[bins].count(val)
-                if count > besthit:
-                    lg.write(f"{bins}\t{val}\t{count}\n")
-                    besthit = count
-                    final_dic[bins] = [val, besthit]
-                    adequate = True
+                                                # Variable to get how many contigs in bin
+            bin_size = len(output_dic[bins])
+            threshold = bin_size * 0.5          # Must be 50% consensus or more
+            for assembly in set(output_dic[bins]):
+                                                # Count each occurence of attrib
+                count = output_dic[bins].count(assembly)
+                if count > threshold:
+                    lg.write(f"{bins}\t{assembly}\t{count}\n")
+                    final_dic[bins] = [assembly, count]
+                    adequate = True             # If flagged, don't write log below
             if not adequate:
                 lg.write(
                     f"Bin {bins} does not have an adequate assembly match.\n")

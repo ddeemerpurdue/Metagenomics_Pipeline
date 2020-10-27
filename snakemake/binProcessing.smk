@@ -336,18 +336,22 @@ rule blast_no_binners:
 
 p_nums, = glob_wildcards(
     "BlastBinners/particle/Full10000_OriginalTaxonRemovedA80R99ANIRepatT95M20/blastn.NoBin_{num}.txt")
+
+
 s_nums, = glob_wildcards(
     "BlastBinners/supernatant/Full10000_OriginalTaxonRemovedA80R99ANIRepatT95M20/blastn.NoBin_{num}.txt")
+
+
 # Repatriate contigs based on reference assemblies
 # Will have to change the NoBin_{num} to {num}.NoBin
 rule blast_repatriation:
     input:
         nonbin_results = expand(
             "BlastBinners/{{sample}}/{{processing}}/blastn.NoBin_{num}.txt",
-            num=s_nums),
+            num=[]),
         bin_results = expand(
             "BlastBinners/{{sample}}/{{processing}}/blastn.{num}.txt",
-            num=s_nums)
+            num=[])
     params:
         threshold = "85"
     log:

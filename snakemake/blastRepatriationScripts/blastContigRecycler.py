@@ -39,7 +39,8 @@ def read_bastn_reference(blast_file):
     contigs.
     '''
     similarities = []
-    total_length = 0
+    sum_contig_length = 0
+    sum_match_length = 0
     with open(blast_file) as i:
         line = i.readline().split('\t')
         assert len(line) == 12, "Not a blastn format 6 file"
@@ -48,7 +49,8 @@ def read_bastn_reference(blast_file):
                 contig_length = float(line[0].split('_')[3])
                 pident = float(line[2])
                 length = int(line[3])
-                total_length += length
+                sum_contig_length += contig_length
+                sum_match_length += length
                 similarity = calc_similarity(contig_length,
                                              pident, length)
                 similarities.append(similarity)
@@ -57,7 +59,8 @@ def read_bastn_reference(blast_file):
             line = i.readline().split()
         # Return the mean similarity value
         mean = sum(similarities) / len(similarities)
-        return mean, total_length
+        length_ratio = sum_match_length / sum_contig_length
+        return mean, length_ratio
 
 
 def format_name(nb_blast_file, threshold):
@@ -145,7 +148,8 @@ def read_blastn_nobinners(blast_file, nb_blast_file, threshold):
         print(f"File - {blast_file} -  is empty!")
         return {}, []
     # Initialize threshold to compare non-binners to
-    mean_bin_value, total_length = read_bastn_reference(blast_file)
+    mean_bin_value, length_ratio = read_bastn_reference(blast_file)
+    print(f"{length_ratio}\n")
     minimal_match = mean_bin_value - (mean_bin_value * 0.05)
     threshold = float(threshold) / 100
 
@@ -153,7 +157,7 @@ def read_blastn_nobinners(blast_file, nb_blast_file, threshold):
     binID_file, binLog_file, bin_num = format_name(nb_blast_file, threshold)
     ''' String name formatting '''
     # If the mean assembly value does not pass the threshold, log and return
-    if minimal_match < threshold:
+    if minimal_match < threshold or length_ratio < 0.10:
         print('Bin does not match assembly above the listed threshold.')
         return {}, []
 
@@ -171,6 +175,7 @@ def read_blastn_nobinners(blast_file, nb_blast_file, threshold):
                 length = float(line[3])
                 similarity = calc_similarity(contig_length,
                                              pident, length)
+                # Below is where we make sure the
                 if (similarity >= minimal_match and length > 2000):
                     '''If we have a match, we want to write this output
                     to a binID file and log the reason. But first, see if we've

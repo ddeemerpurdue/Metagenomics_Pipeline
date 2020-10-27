@@ -69,7 +69,7 @@ def blast_bin_files(query, fmt, log):
         # At this point, if there was a reference then we have all information
         # we need to run a blast search
         output = f"BlastBinners/{sample}/{processing}/blastn.{bin_number}.txt"
-        print(f"{output}\n{full_reference}\n{query}\n{lg.name}")
+        # print(f"{output}\n{full_reference}\n{query}\n{lg.name}")
         if blast:
             if run_blast(output, full_reference, query, lg, fmt) == 1:
                 return 1
