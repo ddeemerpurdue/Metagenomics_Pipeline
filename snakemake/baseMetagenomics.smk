@@ -50,7 +50,7 @@ standardization. Thoughts?
     input:
         #reads=expand("../input/Fastq/{samples}_{num}.fastq", samples=config['samples'], num=["R1","R2"])
         reads_alt = expand("../input/Fastq/{{samples}}_{num}.fastq", num=["R1","R2"])
-    params:
+:    params:
         threads=config["threads"]
     conda:
         "envs/fastqc.yaml"
