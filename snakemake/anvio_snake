@@ -1,0 +1,75 @@
+configfile: "config.yaml"
+
+rule contig_db:
+    input:
+        samples=expand(f"{config['readpath']}{sample}.contigs.fasta", sample=config['file']),
+    output:
+        "{sample}.contigs.db"
+    params:
+        "{sample}"
+    conda:
+        "envs/anvio.yaml"
+    shell:
+        """
+        anvi-gen-contigs-database -f {input} -o {output} -n {params}
+        anvi-run-hmms -c {input} --num-threads 20
+        anvi-setup-ncbi-cogs --reset --num-threads 20 --just-do-it
+        anvi-run-ncbi-cogs -c {input} --num-threads 20
+        """
+
+rule sequence_calls:
+    input:
+        "{sample}.contigs.db"
+    output:
+        "gene_calls.fa"
+    conda:
+        "envs/anvio.yaml"
+    shell:
+        "anvi-get-sequences-for-gene-calls -c {input} -o {output}"
+
+rule centrifuge:
+    input:
+        "gene_calls.fa"
+    output:
+        "centrifuge_hits.tsv"
+    params:
+        "{sample}/contigs.db"
+    conda:
+        "envs/anvio.yaml"
+    shell:
+        """
+        centrifuge -f -x $CENTRIFUGE_BASE/p+h+v {input} -S {output}
+        anvi-import-taxonomy-for-genes -c {params} -i centrifuge_hits.tsv centrifuge_report.tsv -p centrifuge
+        """
+
+rule profile:
+    input:
+         bams=expand(f"{config['bampath']}{bams}.sorted.bam", bams=config['bam_files'])
+    output:
+        "{bams}"
+    params:
+        "{sample}/contigs.db"
+    conda:
+        "envs/anvio.yaml"
+    shell:
+        "anvi-profile --num-threads 20 -i {input} -c {params} --output-dir {output}"
+
+def get_profile(wildcards):
+    return sorted(glob.glob(wildcards.bams + '*/PROFILE.db'))
+
+rule profile:
+    input:
+        "get_profile"
+    output:
+        "SAMPLES_MERGED"
+    params:
+        contigdb="{sample}/contigs.db",
+        name="{sample}"
+    conda:
+        "envs/anvio.yaml"
+    shell:
+        "anvi-merge {input} -o {output} -c {params.contigdb} --sample-name {params.name}"
+
+
+
+
